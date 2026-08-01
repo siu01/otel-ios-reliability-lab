@@ -1,0 +1,15 @@
+event	utc_timestamp
+first_launch_requested	2026-08-01T15:35:31.434Z
+first_launch_returned	2026-08-01T15:35:31.782Z
+generated_ledger_observed	2026-08-01T15:35:32.523Z
+background_app_launch_requested	2026-08-01T15:35:32.532Z
+background_app_launch_returned	2026-08-01T15:35:33.033Z
+background_event_observed	2026-08-01T15:35:34.544Z
+background_flush_completed_observed	2026-08-01T15:35:34.709Z
+termination_requested	2026-08-01T15:35:34.846Z
+first_process_terminated	2026-08-01T15:35:34.861Z
+collector_start_requested	2026-08-01T15:35:35.036Z
+collector_ready	2026-08-01T15:35:35.635Z
+resume_launch_requested	2026-08-01T15:35:35.647Z
+resume_launch_returned	2026-08-01T15:35:36.209Z
+capture_window_complete	2026-08-01T15:36:06.223Z
