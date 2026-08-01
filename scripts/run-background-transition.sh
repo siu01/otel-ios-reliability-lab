@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 && $# -ne 8 && $# -ne 9 ]]; then
-  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes>]]]]" >&2
+if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 && $# -ne 8 && $# -ne 9 \
+    && $# -ne 10 && $# -ne 11 ]]; then
+  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> [<object-policy> [<object-byte-budget>]]]]]]" >&2
   exit 64
 fi
 
@@ -15,6 +16,8 @@ span_count="${6:-100}"
 schedule_delay_milliseconds="${7:-5000}"
 max_export_batch_size="${8:-256}"
 payload_attribute_bytes="${9:-0}"
+persistence_object_policy="${10:-sdkNative}"
+persistence_object_byte_budget="${11:-262144}"
 
 if [[ ! "$evidence_run_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "invalid evidence run ID" >&2
@@ -59,6 +62,18 @@ if [[ ! "$payload_attribute_bytes" =~ ^[0-9]+$ ]] || (( payload_attribute_bytes 
   echo "payload attribute bytes must be an integer from 0 through 524288" >&2
   exit 64
 fi
+case "$persistence_object_policy" in
+  sdkNative|encodedByteBudget) ;;
+  *)
+    echo "persistence object policy must be sdkNative or encodedByteBudget" >&2
+    exit 64
+    ;;
+esac
+if [[ ! "$persistence_object_byte_budget" =~ ^[1-9][0-9]*$ ]] \
+    || (( persistence_object_byte_budget > 524288 )); then
+  echo "persistence object byte budget must be an integer from 1 through 524288" >&2
+  exit 64
+fi
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 simulator_udid="${LAB_SIMULATOR_UDID:-72FAE57E-1A63-4BF7-A20E-8C1C23C294E9}"
@@ -78,6 +93,8 @@ first_launch_log="$run_dir/first-launch.txt"
 background_launch_log="$run_dir/background-app-launch.txt"
 resume_launch_log="$run_dir/resume-launch.txt"
 http_attempts_path="$run_dir/http-attempts.jsonl"
+object_policy_events_path="$run_dir/object-policy-events.jsonl"
+object_policy_events_before_path="$run_dir/object-policy-events-before-relaunch.jsonl"
 collector_binary="$repo_dir/collector/bin/otelcol"
 collector_pid=""
 timestamp_source="$repo_dir/tools/utc-now.c"
@@ -156,6 +173,8 @@ printf 'flush_trigger\tbackground\n' >> "$boundary_log"
 printf 'processor_schedule_delay_milliseconds\t%s\n' "$schedule_delay_milliseconds" >> "$boundary_log"
 printf 'max_export_batch_size\t%s\n' "$max_export_batch_size" >> "$boundary_log"
 printf 'payload_attribute_bytes\t%s\n' "$payload_attribute_bytes" >> "$boundary_log"
+printf 'persistence_object_policy\t%s\n' "$persistence_object_policy" >> "$boundary_log"
+printf 'persistence_object_byte_budget\t%s\n' "$persistence_object_byte_budget" >> "$boundary_log"
 printf 'background_app\t%s\n' "$background_bundle_id" >> "$boundary_log"
 printf 'stop_mechanism\tdirect_sigkill\n' >> "$boundary_log"
 printf 'artifact\tsha256\n' > "$digest_log"
@@ -172,6 +191,7 @@ lower_span_run_id="$(printf '%s' "$span_run_id" | tr '[:upper:]' '[:lower:]')"
 app_run_dir="$app_container/Library/Application Support/OTelReliabilityLab/runs/$lower_span_run_id"
 persistence_dir="$app_container/Library/Application Support/OTelReliabilityLab/persistence/$persistence_mode"
 lifecycle_path="$app_run_dir/lifecycle-events.jsonl"
+app_object_policy_events_path="$app_run_dir/object-policy-events.jsonl"
 
 record_timing first_launch_requested
 xcrun simctl launch \
@@ -188,6 +208,8 @@ xcrun simctl launch \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
   "--lab-max-export-batch-size=$max_export_batch_size" \
   "--lab-payload-bytes=$payload_attribute_bytes" \
+  "--lab-persistence-object-policy=$persistence_object_policy" \
+  "--lab-persistence-object-byte-budget=$persistence_object_byte_budget" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$first_launch_log"
 record_timing first_launch_returned
@@ -299,8 +321,9 @@ if [[ -f "$app_run_dir/http-attempts.jsonl" ]]; then
   first_process_http_record_count="$(wc -l < "$app_run_dir/http-attempts.jsonl" | tr -d ' ')"
 fi
 printf 'first_process_http_records_before_stop\t%s\n' "$first_process_http_record_count" >> "$boundary_log"
-if [[ "$experiment_id" == "E009" && "$first_process_http_record_count" != "0" ]]; then
-  echo "E009 scale run reached the exporter HTTP path before stop" >&2
+if [[ "$experiment_id" == "E009" || "$experiment_id" == "E014" ]] \
+    && [[ "$first_process_http_record_count" != "0" ]]; then
+  echo "$experiment_id run reached the exporter HTTP path before stop" >&2
   exit 1
 fi
 
@@ -324,12 +347,19 @@ printf 'persistence_files_after_termination\t%s\n' "$after_termination_file_coun
 cp "$app_run_dir/generated.jsonl" "$run_dir/generated-before-relaunch.jsonl"
 cp "$app_run_dir/run.json" "$run_dir/run-before-relaunch.json"
 cp "$lifecycle_path" "$run_dir/lifecycle-events-before-relaunch.jsonl"
+if [[ -f "$app_object_policy_events_path" ]]; then
+  cp "$app_object_policy_events_path" "$object_policy_events_before_path"
+else
+  touch "$object_policy_events_before_path"
+fi
 before_generated_digest="$(shasum -a 256 "$run_dir/generated-before-relaunch.jsonl" | awk '{print $1}')"
 before_run_digest="$(shasum -a 256 "$run_dir/run-before-relaunch.json" | awk '{print $1}')"
 before_lifecycle_digest="$(shasum -a 256 "$run_dir/lifecycle-events-before-relaunch.jsonl" | awk '{print $1}')"
+before_object_policy_digest="$(shasum -a 256 "$object_policy_events_before_path" | awk '{print $1}')"
 printf 'generated-before-relaunch.jsonl\t%s\n' "$before_generated_digest" >> "$digest_log"
 printf 'run-before-relaunch.json\t%s\n' "$before_run_digest" >> "$digest_log"
 printf 'lifecycle-events-before-relaunch.jsonl\t%s\n' "$before_lifecycle_digest" >> "$digest_log"
+printf 'object-policy-events-before-relaunch.jsonl\t%s\n' "$before_object_policy_digest" >> "$digest_log"
 
 export OTEL_LAB_CAPTURE_PATH="$capture_path"
 record_timing collector_start_requested
@@ -365,6 +395,8 @@ xcrun simctl launch \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
   "--lab-max-export-batch-size=$max_export_batch_size" \
   "--lab-payload-bytes=$payload_attribute_bytes" \
+  "--lab-persistence-object-policy=$persistence_object_policy" \
+  "--lab-persistence-object-byte-budget=$persistence_object_byte_budget" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$resume_launch_log"
 record_timing resume_launch_returned
@@ -387,14 +419,21 @@ if [[ -f "$app_run_dir/http-attempts.jsonl" ]]; then
 else
   touch "$http_attempts_path"
 fi
+if [[ -f "$app_object_policy_events_path" ]]; then
+  cp "$app_object_policy_events_path" "$object_policy_events_path"
+else
+  touch "$object_policy_events_path"
+fi
 snapshot_persistence "$persistence_dir" "$after_resume_snapshot"
 
 after_generated_digest="$(shasum -a 256 "$run_dir/generated.jsonl" | awk '{print $1}')"
 after_run_digest="$(shasum -a 256 "$run_dir/run.json" | awk '{print $1}')"
 after_lifecycle_digest="$(shasum -a 256 "$run_dir/lifecycle-events.jsonl" | awk '{print $1}')"
+after_object_policy_digest="$(shasum -a 256 "$object_policy_events_path" | awk '{print $1}')"
 printf 'generated.jsonl\t%s\n' "$after_generated_digest" >> "$digest_log"
 printf 'run.json\t%s\n' "$after_run_digest" >> "$digest_log"
 printf 'lifecycle-events.jsonl\t%s\n' "$after_lifecycle_digest" >> "$digest_log"
+printf 'object-policy-events.jsonl\t%s\n' "$after_object_policy_digest" >> "$digest_log"
 
 if [[ "$before_generated_digest" != "$after_generated_digest" ]]; then
   echo "generated ledger changed across resume launch" >&2
@@ -407,6 +446,33 @@ fi
 if [[ "$before_lifecycle_digest" != "$after_lifecycle_digest" ]]; then
   echo "lifecycle evidence changed across resume launch" >&2
   exit 1
+fi
+if [[ "$before_object_policy_digest" != "$after_object_policy_digest" ]]; then
+  echo "object policy evidence changed across resume launch" >&2
+  exit 1
+fi
+
+if [[ "$persistence_object_policy" == "encodedByteBudget" ]]; then
+  if [[ ! -s "$object_policy_events_path" ]]; then
+    echo "encoded-byte policy produced no decision evidence" >&2
+    exit 1
+  fi
+  if ! jq -e -s \
+      --argjson budget "$persistence_object_byte_budget" \
+      'all(.[];
+        .byteBudget == $budget and
+        ((.outcome == "acceptedChunk" and .encodedByteCount <= $budget) or
+         (.outcome == "rejectedOversize" and .encodedByteCount > $budget)))' \
+      "$object_policy_events_path" >/dev/null; then
+    echo "object policy evidence contains an invalid outcome or byte boundary" >&2
+    exit 1
+  fi
+  observed_policy_sequences="$(jq -cs '[.[].sequences[]] | sort' "$object_policy_events_path")"
+  expected_policy_sequences="$(jq -cn --argjson count "$span_count" '[range(1; $count + 1)]')"
+  if [[ "$observed_policy_sequences" != "$expected_policy_sequences" ]]; then
+    echo "object policy evidence does not cover each generated sequence exactly once" >&2
+    exit 1
+  fi
 fi
 
 xcrun simctl terminate "$simulator_udid" "$bundle_id"
