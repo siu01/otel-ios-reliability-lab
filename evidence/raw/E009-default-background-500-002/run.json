@@ -1,0 +1,13 @@
+{
+  "experimentID" : "E009",
+  "exporterMode" : "statelessHTTP",
+  "flushMode" : "explicit",
+  "flushTrigger" : "background",
+  "httpClientMode" : "instrumentedBase",
+  "persistence" : "officialDefault",
+  "plannedSpanCount" : 500,
+  "processorScheduleDelayMilliseconds" : 15000,
+  "runID" : "00000000-0000-0000-0009-000000000008",
+  "startedAt" : "2026-08-01T14:27:35Z",
+  "transport" : "http"
+}
