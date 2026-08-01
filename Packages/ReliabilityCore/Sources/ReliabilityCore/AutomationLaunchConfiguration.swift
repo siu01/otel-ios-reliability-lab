@@ -13,6 +13,8 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let processorScheduleDelayMilliseconds: Int?
     public let maxExportBatchSize: Int?
     public let payloadAttributeBytes: Int?
+    public let persistenceObjectPolicy: PersistenceObjectPolicy?
+    public let persistenceObjectByteBudget: Int?
     public let httpClientMode: HTTPClientMode?
     public let exporterMode: ExporterMode?
 
@@ -45,6 +47,17 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
         payloadAttributeBytes = Self.value(for: "--lab-payload-bytes", in: arguments)
             .flatMap(Int.init)
             .flatMap { $0 >= 0 ? $0 : nil }
+        persistenceObjectPolicy = Self.value(
+            for: "--lab-persistence-object-policy",
+            in: arguments
+        )
+            .flatMap(PersistenceObjectPolicy.init(rawValue:))
+        persistenceObjectByteBudget = Self.value(
+            for: "--lab-persistence-object-byte-budget",
+            in: arguments
+        )
+            .flatMap(Int.init)
+            .flatMap { $0 > 0 ? $0 : nil }
         httpClientMode = Self.value(for: "--lab-http-client", in: arguments)
             .flatMap(HTTPClientMode.init(rawValue:))
         exporterMode = Self.value(for: "--lab-exporter", in: arguments)

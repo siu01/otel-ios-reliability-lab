@@ -19,6 +19,8 @@ struct AutomationLaunchConfigurationTests {
             "--lab-schedule-delay-ms=5000",
             "--lab-max-export-batch-size=100",
             "--lab-payload-bytes=1536",
+            "--lab-persistence-object-policy=encodedByteBudget",
+            "--lab-persistence-object-byte-budget=240000",
             "--lab-http-client=instrumentedBase",
             "--lab-exporter=statelessHTTP",
         ])
@@ -35,6 +37,8 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.processorScheduleDelayMilliseconds == 5_000)
         #expect(config.maxExportBatchSize == 100)
         #expect(config.payloadAttributeBytes == 1_536)
+        #expect(config.persistenceObjectPolicy == .encodedByteBudget)
+        #expect(config.persistenceObjectByteBudget == 240_000)
         #expect(config.httpClientMode == .instrumentedBase)
         #expect(config.exporterMode == .statelessHTTP)
     }
@@ -52,6 +56,8 @@ struct AutomationLaunchConfigurationTests {
             "--lab-schedule-delay-ms=0",
             "--lab-max-export-batch-size=0",
             "--lab-payload-bytes=-1",
+            "--lab-persistence-object-policy=guessByCount",
+            "--lab-persistence-object-byte-budget=0",
             "--lab-http-client=magic",
             "--lab-exporter=rememberEverything",
         ])
@@ -67,6 +73,8 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.processorScheduleDelayMilliseconds == nil)
         #expect(config.maxExportBatchSize == nil)
         #expect(config.payloadAttributeBytes == nil)
+        #expect(config.persistenceObjectPolicy == nil)
+        #expect(config.persistenceObjectByteBudget == nil)
         #expect(config.httpClientMode == nil)
         #expect(config.exporterMode == nil)
     }
