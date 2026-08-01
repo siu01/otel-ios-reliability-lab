@@ -21,7 +21,7 @@ struct RunDescriptorTests {
             payloadAttributeBytes: 1_536,
             persistenceObjectPolicy: .encodedByteBudget,
             persistenceObjectByteBudget: 240_000,
-            persistenceObjectPartitionStrategy: .binarySearchEncoding,
+            persistenceObjectPartitionStrategy: .incrementalJSONElementEncoding,
             mainQueueProbeEnabled: true,
             httpClientMode: .instrumentedBase,
             exporterMode: .statelessHTTP
