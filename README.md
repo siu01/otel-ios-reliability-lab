@@ -74,6 +74,13 @@ for the pinned Swift SDK:
   still completed in about the same time.
 - E012: lowering only that payload-heavy export batch from 100 to 50 restored
   all 1,536- and 2,048-byte conditions to 100/100 with no duplicates.
+- E013: a single 240-KiB span recovered 1/1 at batch 1, while 256- and 300-KiB
+  spans silently recovered 0/1; count tuning therefore has a hard limit.
+- E014: an SDK-external encoded-byte policy recovered the known 100- and
+  500-span losses, and replaced single-span silence with an identity-bearing
+  local oversize rejection; its linear search took up to 7.04 seconds.
+- E015: exact binary search preserved those byte partitions and deliveries while
+  cutting matched flush duration by 85–93% to 135–540 ms.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -91,6 +98,12 @@ The payload-size boundary is summarized in
 [`experiments/E011-payload-size-boundary/results.md`](experiments/E011-payload-size-boundary/results.md).
 Its matched chunk intervention is summarized in
 [`experiments/E012-payload-chunk-recovery/results.md`](experiments/E012-payload-chunk-recovery/results.md).
+The irreducible single-span case is summarized in
+[`experiments/E013-single-span-oversize/results.md`](experiments/E013-single-span-oversize/results.md).
+The byte-aware policy is summarized in
+[`experiments/E014-byte-aware-policy/results.md`](experiments/E014-byte-aware-policy/results.md),
+and its search-cost intervention in
+[`experiments/E015-byte-policy-search-cost/results.md`](experiments/E015-byte-policy-search-cost/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -115,7 +128,9 @@ scripts/run-flush-barrier.sh <evidence-run-id> <span-run-uuid> \
 scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <disabled-or-explicit> \
   [<experiment-id> <span-count> \
-  [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes>]]]]
+  [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> \
+  [<sdkNative-or-encodedByteBudget> [<object-byte-budget> \
+  [<linearPrefixEncoding-or-binarySearchEncoding>]]]]]]]
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -139,3 +154,6 @@ their sources of truth are `project.yml` and the pinned installer.
 | E010 | Can smaller export chunks avoid the silent byte-limit loss? | Complete: batch 100 restored exact 500/500 and 1,000/1,000 recovery for both presets |
 | E011 | Does a safe span count remain safe as attribute payload grows? | Complete: at batch 100, 1,024 bytes recovered 100/100 while 1,536 bytes silently lost 100/100 for both presets |
 | E012 | Can smaller chunks recover those exact payload-heavy spans? | Complete: batch 50 restored all four 1,536/2,048-byte conditions to 100/100 with no duplicates |
+| E013 | Can count tuning save one individually oversized span? | Complete: batch 1 recovered 240 KiB but silently lost 256 and 300 KiB |
+| E014 | Can a byte-aware policy recover batches and surface indivisible loss? | Complete: 100/500-span losses recovered exactly; single oversize recorded explicitly; linear search cost up to 7.04 s |
+| E015 | Can exact byte partitioning fit a mobile background budget? | Complete: binary search preserved delivery and cut matched flushes by 85–93% to 135–540 ms |
