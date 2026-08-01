@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 4 ]]; then
-  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode>" >&2
+if [[ $# -ne 4 && $# -ne 6 ]]; then
+  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count>]" >&2
   exit 64
 fi
 
@@ -10,6 +10,8 @@ evidence_run_id="$1"
 span_run_id="$2"
 persistence_mode="$3"
 flush_mode="$4"
+experiment_id="${5:-E008}"
+span_count="${6:-100}"
 
 if [[ ! "$evidence_run_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "invalid evidence run ID" >&2
@@ -33,6 +35,14 @@ case "$flush_mode" in
     exit 64
     ;;
 esac
+if [[ ! "$experiment_id" =~ ^E[0-9]{3}$ ]]; then
+  echo "experiment ID must match E followed by three digits" >&2
+  exit 64
+fi
+if [[ ! "$span_count" =~ ^[1-9][0-9]*$ ]] || (( span_count > 1000 )); then
+  echo "span count must be an integer from 1 through 1000" >&2
+  exit 64
+fi
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 simulator_udid="${LAB_SIMULATOR_UDID:-72FAE57E-1A63-4BF7-A20E-8C1C23C294E9}"
@@ -116,7 +126,7 @@ if [[ ! -x "$timestamp_binary" || "$timestamp_source" -nt "$timestamp_binary" ]]
   clang -std=c11 -Wall -Wextra -Werror "$timestamp_source" -o "$timestamp_binary"
 fi
 if curl --silent --fail http://127.0.0.1:13133/ >/dev/null 2>&1; then
-  echo "collector is already running; E008 requires it to be unavailable initially" >&2
+  echo "collector is already running; background experiments require it to be unavailable initially" >&2
   exit 1
 fi
 
@@ -124,6 +134,8 @@ mkdir -p "$run_dir"
 printf 'event\tutc_timestamp\n' > "$timing_log"
 printf 'metric\tvalue\n' > "$boundary_log"
 printf 'flush_mode\t%s\n' "$flush_mode" >> "$boundary_log"
+printf 'experiment_id\t%s\n' "$experiment_id" >> "$boundary_log"
+printf 'planned_span_count\t%s\n' "$span_count" >> "$boundary_log"
 printf 'flush_trigger\tbackground\n' >> "$boundary_log"
 printf 'processor_schedule_delay_milliseconds\t5000\n' >> "$boundary_log"
 printf 'background_app\t%s\n' "$background_bundle_id" >> "$boundary_log"
@@ -148,9 +160,9 @@ xcrun simctl launch \
   "$simulator_udid" \
   "$bundle_id" \
   --lab-autorun \
-  --lab-experiment-id=E008 \
+  "--lab-experiment-id=$experiment_id" \
   "--lab-run-id=$span_run_id" \
-  --lab-span-count=100 \
+  "--lab-span-count=$span_count" \
   --lab-transport=http \
   "--lab-persistence=$persistence_mode" \
   "--lab-flush=$flush_mode" \
@@ -172,7 +184,7 @@ for _ in {1..4000}; do
   if [[ -s "$app_run_dir/generated.jsonl" && -s "$lifecycle_path" ]] \
       && rg -q '"phase":"generatedLedgerCommitted"' "$lifecycle_path"; then
     generated_record_count="$(wc -l < "$app_run_dir/generated.jsonl" | tr -d ' ')"
-    if [[ "$generated_record_count" == "100" ]]; then
+    if [[ "$generated_record_count" == "$span_count" ]]; then
       generated_ledger_observed=true
       break
     fi
@@ -185,7 +197,7 @@ if [[ "$generated_ledger_observed" != true ]]; then
   exit 1
 fi
 record_timing generated_ledger_observed
-printf 'generated_records_before_background\t100\n' >> "$boundary_log"
+printf 'generated_records_before_background\t%s\n' "$span_count" >> "$boundary_log"
 
 record_timing background_app_launch_requested
 xcrun simctl launch "$simulator_udid" "$background_bundle_id" > "$background_launch_log"
@@ -246,6 +258,16 @@ elif [[ "$flush_started_count" != "0" || "$flush_completed_count" != "0" ]]; the
   exit 1
 fi
 
+first_process_http_record_count=0
+if [[ -f "$app_run_dir/http-attempts.jsonl" ]]; then
+  first_process_http_record_count="$(wc -l < "$app_run_dir/http-attempts.jsonl" | tr -d ' ')"
+fi
+printf 'first_process_http_records_before_stop\t%s\n' "$first_process_http_record_count" >> "$boundary_log"
+if [[ "$experiment_id" == "E009" && "$first_process_http_record_count" != "0" ]]; then
+  echo "E009 scale run reached the exporter HTTP path before stop" >&2
+  exit 1
+fi
+
 persistence_visible_before_request=false
 if [[ -d "$persistence_dir" ]] && [[ -n "$(find "$persistence_dir" -type f -print -quit)" ]]; then
   persistence_visible_before_request=true
@@ -297,9 +319,9 @@ xcrun simctl launch \
   "$simulator_udid" \
   "$bundle_id" \
   --lab-resume \
-  --lab-experiment-id=E008 \
+  "--lab-experiment-id=$experiment_id" \
   "--lab-run-id=$span_run_id" \
-  --lab-span-count=100 \
+  "--lab-span-count=$span_count" \
   --lab-transport=http \
   "--lab-persistence=$persistence_mode" \
   "--lab-flush=$flush_mode" \
