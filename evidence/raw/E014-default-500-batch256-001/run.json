@@ -1,0 +1,17 @@
+{
+  "experimentID" : "E014",
+  "exporterMode" : "statelessHTTP",
+  "flushMode" : "explicit",
+  "flushTrigger" : "background",
+  "httpClientMode" : "instrumentedBase",
+  "maxExportBatchSize" : 256,
+  "payloadAttributeBytes" : 0,
+  "persistence" : "officialDefault",
+  "persistenceObjectByteBudget" : 262144,
+  "persistenceObjectPolicy" : "encodedByteBudget",
+  "plannedSpanCount" : 500,
+  "processorScheduleDelayMilliseconds" : 15000,
+  "runID" : "00000000-0000-0000-0014-000000000003",
+  "startedAt" : "2026-08-01T15:55:20Z",
+  "transport" : "http"
+}
