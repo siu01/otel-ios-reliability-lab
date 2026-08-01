@@ -1,0 +1,7 @@
+{"flushMode":"explicit","phase":"generatedLedgerCommitted","timestampUnixNanoseconds":1785601719627945984}
+{"flushMode":"explicit","phase":"burstCompleted","timestampUnixNanoseconds":1785601719628804096}
+{"flushMode":"explicit","phase":"backgroundObserved","timestampUnixNanoseconds":1785601721450706944}
+{"flushMode":"explicit","phase":"flushStarted","timestampUnixNanoseconds":1785601721451416064}
+{"flushMode":"explicit","phase":"mainQueueProbeScheduled","timestampUnixNanoseconds":1785601721451944704}
+{"durationNanoseconds":129497375,"flushMode":"explicit","phase":"flushCompleted","timestampUnixNanoseconds":1785601721581913856}
+{"durationNanoseconds":374176958,"flushMode":"explicit","phase":"mainQueueProbeExecuted","timestampUnixNanoseconds":1785601721826575872}

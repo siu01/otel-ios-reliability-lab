@@ -1,0 +1,19 @@
+{
+  "experimentID" : "E016",
+  "exporterMode" : "statelessHTTP",
+  "flushMode" : "explicit",
+  "flushTrigger" : "background",
+  "httpClientMode" : "instrumentedBase",
+  "mainQueueProbeEnabled" : true,
+  "maxExportBatchSize" : 100,
+  "payloadAttributeBytes" : 0,
+  "persistence" : "officialInstant",
+  "persistenceObjectByteBudget" : 262144,
+  "persistenceObjectPartitionStrategy" : "linearPrefixEncoding",
+  "persistenceObjectPolicy" : "sdkNative",
+  "plannedSpanCount" : 500,
+  "processorScheduleDelayMilliseconds" : 15000,
+  "runID" : "00000000-0000-0000-0016-000000000002",
+  "startedAt" : "2026-08-01T16:28:39Z",
+  "transport" : "http"
+}
