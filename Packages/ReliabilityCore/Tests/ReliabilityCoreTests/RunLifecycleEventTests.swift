@@ -18,4 +18,19 @@ struct RunLifecycleEventTests {
 
         #expect(decoded == original)
     }
+
+    @Test("represents a background event without a flush duration")
+    func backgroundEvent() throws {
+        let event = RunLifecycleEvent(
+            phase: .backgroundObserved,
+            timestampUnixNanoseconds: 1_785_582_400_456_000_000,
+            flushMode: .disabled
+        )
+
+        let data = try JSONEncoder().encode(event)
+        let decoded = try JSONDecoder().decode(RunLifecycleEvent.self, from: data)
+
+        #expect(decoded.phase == .backgroundObserved)
+        #expect(decoded.durationNanoseconds == nil)
+    }
 }

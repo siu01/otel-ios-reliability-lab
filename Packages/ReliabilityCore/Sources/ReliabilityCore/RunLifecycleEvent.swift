@@ -25,6 +25,7 @@ public struct RunLifecycleEvent: Codable, Equatable, Sendable {
 
 public enum RunLifecyclePhase: String, Codable, Sendable {
     case generatedLedgerCommitted
+    case backgroundObserved
     case flushStarted
     case flushCompleted
     case burstCompleted
