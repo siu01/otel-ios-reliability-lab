@@ -68,4 +68,23 @@ struct RunEvidenceStore {
             options: .atomic
         )
     }
+
+    func appendLifecycleEvent(_ event: RunLifecycleEvent) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        var line = try encoder.encode(event)
+        line.append(0x0A)
+
+        let evidenceURL = runDirectory.appendingPathComponent("lifecycle-events.jsonl")
+        guard FileManager.default.fileExists(atPath: evidenceURL.path) else {
+            try line.write(to: evidenceURL, options: .atomic)
+            return
+        }
+
+        let handle = try FileHandle(forWritingTo: evidenceURL)
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        try handle.write(contentsOf: line)
+        try handle.synchronize()
+    }
 }
