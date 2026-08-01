@@ -190,11 +190,42 @@ header、compression、metrics、shutdownなど公式実装の全機能を再実
 ではない。設計原則のmechanism proofであって、そのままproduction投入できる
 完成品とは主張しない。
 
+## E005：アプリを終了しても100件を回収できるか
+
+E004までは、Collector停止中もアプリのプロセス自体は生きていた。iOSで本当に
+気になるのは、ディスクへ保存したあとに元のプロセスが消え、新しいプロセスが
+同じSpanを見つけられるかである。
+
+そこでCollectorを止めたまま100 Spanを生成し、ホストから永続ファイルを実際に
+観測してSHA-256を記録してから、`simctl terminate`でアプリを終了した。その後に
+Collectorを起動し、同じrun IDと永続化ディレクトリを指定してアプリを再起動した。
+再起動側はtelemetryを構成するだけで、Spanを1件も新規生成しない。
+
+| Persistence | 終了直前のファイル | 再起動後のHTTP | Total received | Duplicate | Missing |
+|---|---:|---|---:|---:|---:|
+| Instant | 1（107,770 B） | 27,818 B × 1成功 | 100 | 0 | 0 |
+| Default | 1（107,756 B） | 27,818 B × 1成功 | 100 | 0 | 0 |
+
+どちらも最初のプロセスではHTTP送信が始まっていない。再起動後のプロセスが
+永続ファイルを読み、1回のrequestで100件を回収した。終了前後の
+`generated.jsonl`と`run.json`は、それぞれSHA-256が完全一致した。再起動時に
+別の100 Spanを作って帳尻を合わせたのではない。
+
+これで「retryの所有者を永続化1層へ限定する」構成は、送信先の一時障害だけで
+なく、完全に保存されたbatchに対する制御されたプロセス終了も越えられた。
+
+ただし、ファイルを観測してから終了した点は意図的な境界条件である。非同期
+書き込みの途中、jetsam、クラッシュ、端末再起動まで生存すると一般化はしない。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
 回収した。つまり、アプリが生きている間の一時的な送信先障害は、設定だけで
 0%から100%へ変えられた。
+
+さらに、完全な永続ファイルを確認後にプロセスを終了しても、DefaultとInstantの
+両方が新しいプロセスから100件を一意に回収できた。少なくともこの制御条件では、
+「元のプロセスが死んだら終わり」でもなかった。
 
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
@@ -202,17 +233,17 @@ header、compression、metrics、shutdownなど公式実装の全機能を再実
 
 ## 実運用で考えられる対策
 
-E004により「retryの所有者を1層にする」方針は、この実験条件では欠損0・重複0を
-両立した。ただしproduction向けの実装方式と、他の対策とのコスト比較は未検証で
-ある。
+E004とE005により「retryの所有者を1層にする」方針は、一時障害と制御された
+プロセス再起動の両方で欠損0・重複0を両立した。ただしproduction向けの実装方式
+と、他の対策とのコスト比較は未検証である。
 
 - retryの所有者を1層にする（mechanism proof済み）。
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次の実験では、stateless exporterのprotocol parityと、再起動をまたぐ回収を
-比較する。
+次の実験では、非同期書き込みの途中で終了した場合と、stateless exporterの
+protocol parityを比較する。
 
 ## 試行錯誤も証跡に残す
 
@@ -229,15 +260,18 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
 - iPhone 17 Simulator / iOS 26.4.1。
 - `opentelemetry-swift` 2.5.0、core 2.5.1。
 - `otelcol` 0.157.0。
-- loopbackの接続拒否、OTLP/HTTP JSON、100 Span。
+- loopbackの接続拒否、OTLP/HTTP protobuf、100 Span。
 - 各停止時間は1 run。ただし8秒3倍は非計測E002でも独立再現した。
+- 再起動試験は`simctl terminate`による制御された終了であり、ファイル観測後に
+  実行した。
 
 SDK全バージョン、実端末、すべてのネットワーク障害へ一般化はしない。
 
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
-- アプリ強制終了・再起動後も永続ファイルを回収できるか。
+- 非同期永続化の書き込み境界で終了すると何件残るか。
+- jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
 - 1,000 Span時の書き込み時間、ストレージ、メインスレッド影響。
 - downstream dedupに必要な状態量。
 
@@ -248,6 +282,8 @@ OpenTelemetry Swiftの公式Persistence Exporterは、8秒の送信先障害に�
 exporterの組み合わせでは、失敗ごとに同じbatchを2層が保持し、成功requestが
 100→200→300 Spanへ増幅した。HTTP側をstatelessにしてretryの所有者を
 永続化1層へ絞ると、同じ2回失敗でも成功requestは100 Spanのままになった。
+完全な永続ファイルを確認してプロセスを終了したE005でも、DefaultとInstantは
+再起動後に100件を一度ずつ回収した。
 
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するかまで測る必要がある。
