@@ -61,6 +61,9 @@ for the pinned Swift SDK:
 - E007: waiting for provider force-flush completion created a file and changed
   abrupt-relaunch recovery from 0/100 to 100/100 for both presets; an additional
   exporter barrier added a failed request and blocking without more recovery.
+- E008: an actual SwiftUI background transition before the five-second batch
+  schedule lost 100/100 without flush for both presets; provider force-flush in
+  the background handler completed in 45–52 ms and recovered 100/100 exactly.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -68,6 +71,8 @@ HTTP failures plus one. See
 for the scoped conclusion and limitations.
 The distinct persistence boundary is summarized in
 [`experiments/E006-write-boundary/results.md`](experiments/E006-write-boundary/results.md).
+The real-background intervention is summarized in
+[`experiments/E008-background-transition/results.md`](experiments/E008-background-transition/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -89,6 +94,8 @@ scripts/run-write-boundary.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <ledger-offset-ms>
 scripts/run-flush-barrier.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <explicit-or-durabilityBarrier>
+scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
+  <officialInstant-or-officialDefault> <disabled-or-explicit>
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -107,4 +114,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E005 | What survives process termination and relaunch? | Complete: both presets recovered 100/100 exactly once after controlled termination |
 | E006 | What survives termination during the persistence write boundary? | Complete: 0/100 before an observable file, 100/100 after it |
 | E007 | Can a lifecycle flush close the upstream durability gap? | Complete: provider flush changed 0/100 to 100/100 for both presets |
-| E008 | Does the same intervention fit a real iOS background transition? | Next |
+| E008 | Does the same intervention fit a real iOS background transition? | Complete: no-flush lost 100/100; background flush recovered 100/100 for both presets |
