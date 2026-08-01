@@ -21,6 +21,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-payload-bytes=1536",
             "--lab-persistence-object-policy=encodedByteBudget",
             "--lab-persistence-object-byte-budget=240000",
+            "--lab-persistence-object-partition-strategy=binarySearchEncoding",
             "--lab-http-client=instrumentedBase",
             "--lab-exporter=statelessHTTP",
         ])
@@ -39,6 +40,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.payloadAttributeBytes == 1_536)
         #expect(config.persistenceObjectPolicy == .encodedByteBudget)
         #expect(config.persistenceObjectByteBudget == 240_000)
+        #expect(config.persistenceObjectPartitionStrategy == .binarySearchEncoding)
         #expect(config.httpClientMode == .instrumentedBase)
         #expect(config.exporterMode == .statelessHTTP)
     }
@@ -58,6 +60,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-payload-bytes=-1",
             "--lab-persistence-object-policy=guessByCount",
             "--lab-persistence-object-byte-budget=0",
+            "--lab-persistence-object-partition-strategy=randomGuess",
             "--lab-http-client=magic",
             "--lab-exporter=rememberEverything",
         ])
@@ -75,6 +78,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.payloadAttributeBytes == nil)
         #expect(config.persistenceObjectPolicy == nil)
         #expect(config.persistenceObjectByteBudget == nil)
+        #expect(config.persistenceObjectPartitionStrategy == nil)
         #expect(config.httpClientMode == nil)
         #expect(config.exporterMode == nil)
     }

@@ -15,6 +15,7 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let payloadAttributeBytes: Int?
     public let persistenceObjectPolicy: PersistenceObjectPolicy?
     public let persistenceObjectByteBudget: Int?
+    public let persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy?
     public let httpClientMode: HTTPClientMode?
     public let exporterMode: ExporterMode?
 
@@ -58,6 +59,11 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
         )
             .flatMap(Int.init)
             .flatMap { $0 > 0 ? $0 : nil }
+        persistenceObjectPartitionStrategy = Self.value(
+            for: "--lab-persistence-object-partition-strategy",
+            in: arguments
+        )
+            .flatMap(ByteBudgetPartitionStrategy.init(rawValue:))
         httpClientMode = Self.value(for: "--lab-http-client", in: arguments)
             .flatMap(HTTPClientMode.init(rawValue:))
         exporterMode = Self.value(for: "--lab-exporter", in: arguments)
