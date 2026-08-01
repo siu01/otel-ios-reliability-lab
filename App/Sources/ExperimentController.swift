@@ -11,6 +11,7 @@ final class ExperimentController: ObservableObject {
     @Published private(set) var status = "Ready for dry run"
     @Published private(set) var latestRunID: UUID?
     @Published private(set) var isRunning = false
+    @Published private(set) var isReconciled = false
 
     let experimentID = ExperimentID(rawValue: "E000")!
     private let telemetry = TelemetryRuntime()
@@ -37,6 +38,7 @@ final class ExperimentController: ObservableObject {
 
     var deliveryText: String {
         guard generatedCount > 0 else { return "—" }
+        guard isReconciled else { return "Pending" }
         let rate = Double(receivedCount) / Double(generatedCount)
         return rate.formatted(.percent.precision(.fractionLength(1)))
     }
@@ -62,6 +64,7 @@ final class ExperimentController: ObservableObject {
                     persistence: persistence
                 )
                 latestRunID = run.runID
+                isReconciled = false
                 let evidenceStore = try RunEvidenceStore(run: run)
                 try telemetry.configure(for: run)
 
@@ -103,6 +106,7 @@ final class ExperimentController: ObservableObject {
         generatedCount = 0
         receivedCount = 0
         latestRunID = nil
+        isReconciled = false
         status = "Ready for baseline"
     }
 }
