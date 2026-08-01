@@ -149,14 +149,41 @@ struct ContentView: View {
                     }
                 }
 
-                Stepper(value: $controller.payloadAttributeBytes, in: 0...4_096, step: 256) {
+                Picker("Payload order", selection: $controller.payloadAttributePattern) {
+                    Text("Constant").tag(PayloadAttributePattern.constant)
+                    Text("Alternating").tag(
+                        PayloadAttributePattern.alternatingPrimarySecondary
+                    )
+                    Text("Primary first").tag(PayloadAttributePattern.groupedPrimaryFirst)
+                    Text("Secondary first").tag(PayloadAttributePattern.groupedSecondaryFirst)
+                }
+
+                Stepper(
+                    value: $controller.payloadAttributeBytes,
+                    in: 0...524_288,
+                    step: 1_024
+                ) {
                     HStack {
-                        Text("Payload attribute")
+                        Text("Primary payload")
                         Spacer()
                         Text("\(controller.payloadAttributeBytes.formatted()) B")
                             .font(.body.monospacedDigit().weight(.semibold))
                     }
                 }
+
+                Stepper(
+                    value: $controller.payloadAttributeSecondaryBytes,
+                    in: 0...524_288,
+                    step: 1_024
+                ) {
+                    HStack {
+                        Text("Secondary payload")
+                        Spacer()
+                        Text("\(controller.payloadAttributeSecondaryBytes.formatted()) B")
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                }
+                .disabled(controller.payloadAttributePattern == .constant)
             }
         }
     }
