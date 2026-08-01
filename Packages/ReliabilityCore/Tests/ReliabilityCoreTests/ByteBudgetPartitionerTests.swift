@@ -64,6 +64,42 @@ struct ByteBudgetPartitionerTests {
         }
     }
 
+    @Test("binary search preserves linear maximal-prefix decisions")
+    func binarySearchMatchesLinearStrategy() throws {
+        let elements = [4, 4, 11, 6, 4, 3, 3, 3]
+        let linear = try decisionSnapshot(
+            ByteBudgetPartitioner(
+                byteBudget: 10,
+                strategy: .linearPrefixEncoding
+            ).partition(elements, encodedByteCount: { $0.reduce(0, +) })
+        )
+        let binary = try decisionSnapshot(
+            ByteBudgetPartitioner(
+                byteBudget: 10,
+                strategy: .binarySearchEncoding
+            ).partition(elements, encodedByteCount: { $0.reduce(0, +) })
+        )
+
+        #expect(binary == linear)
+    }
+
+    @Test("binary search bounds encoder calls for five hundred elements")
+    func binarySearchBoundsEncoderCalls() throws {
+        var invocationCount = 0
+        let decisions = try ByteBudgetPartitioner(
+            byteBudget: 243,
+            strategy: .binarySearchEncoding
+        ).partition(Array(repeating: 1, count: 500)) { values in
+            invocationCount += 1
+            return values.count
+        }
+
+        #expect(acceptedChunk(at: 0, in: decisions)?.elements.count == 243)
+        #expect(acceptedChunk(at: 1, in: decisions)?.elements.count == 243)
+        #expect(acceptedChunk(at: 2, in: decisions)?.elements.count == 14)
+        #expect(invocationCount < 30)
+    }
+
     private func acceptedChunk<Element>(
         at index: Int,
         in decisions: [ByteBudgetDecision<Element>]
@@ -84,5 +120,18 @@ struct ByteBudgetPartitionerTests {
             return nil
         }
         return rejection
+    }
+
+    private func decisionSnapshot(
+        _ decisions: [ByteBudgetDecision<Int>]
+    ) throws -> [String] {
+        decisions.map { decision in
+            switch decision {
+            case .accepted(let chunk):
+                "accepted:\(chunk.elements):\(chunk.encodedByteCount)"
+            case .rejected(let rejection):
+                "rejected:\(rejection.element):\(rejection.encodedByteCount)"
+            }
+        }
     }
 }
