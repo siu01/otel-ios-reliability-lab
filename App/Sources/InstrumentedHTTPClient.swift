@@ -6,12 +6,26 @@ final class InstrumentedHTTPClient: HTTPClient, @unchecked Sendable {
     private let baseClient: BaseHTTPClient
     private let evidenceURL: URL
     private let lock = NSLock()
-    private var nextAttemptID = 1
+    private var nextAttemptID: Int
 
     init(evidenceURL: URL, baseClient: BaseHTTPClient = BaseHTTPClient()) throws {
         self.evidenceURL = evidenceURL
         self.baseClient = baseClient
-        try Data().write(to: evidenceURL, options: .atomic)
+        if FileManager.default.fileExists(atPath: evidenceURL.path) {
+            let contents = try String(contentsOf: evidenceURL, encoding: .utf8)
+            let decoder = JSONDecoder()
+            let highestAttemptID = contents
+                .split(whereSeparator: \.isNewline)
+                .compactMap { line in
+                    try? decoder.decode(HTTPAttemptEvent.self, from: Data(line.utf8))
+                }
+                .map(\.attemptID)
+                .max() ?? 0
+            nextAttemptID = highestAttemptID + 1
+        } else {
+            nextAttemptID = 1
+            try Data().write(to: evidenceURL, options: .atomic)
+        }
     }
 
     func send(
