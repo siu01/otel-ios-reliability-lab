@@ -1,0 +1,40 @@
+{
+  "generatedRecordCount" : 500,
+  "receivedRecordCount" : 500,
+  "reconciledAt" : "2026-08-01T16:32:27Z",
+  "report" : {
+    "duplicateGenerationRecordCount" : 0,
+    "duplicateReceiptRecordCount" : 0,
+    "generationGapSequences" : [
+
+    ],
+    "missingReceiptSequences" : [
+
+    ],
+    "plannedSpanCount" : 500,
+    "unexpectedReceiptSequences" : [
+
+    ],
+    "uniqueGeneratedCount" : 500,
+    "uniqueReceivedCount" : 500
+  },
+  "run" : {
+    "experimentID" : "E016",
+    "exporterMode" : "statelessHTTP",
+    "flushMode" : "explicit",
+    "flushTrigger" : "background",
+    "httpClientMode" : "instrumentedBase",
+    "mainQueueProbeEnabled" : true,
+    "maxExportBatchSize" : 256,
+    "payloadAttributeBytes" : 0,
+    "persistence" : "officialInstant",
+    "persistenceObjectByteBudget" : 262144,
+    "persistenceObjectPartitionStrategy" : "binarySearchEncoding",
+    "persistenceObjectPolicy" : "encodedByteBudget",
+    "plannedSpanCount" : 500,
+    "processorScheduleDelayMilliseconds" : 15000,
+    "runID" : "00000000-0000-0000-0016-000000000004",
+    "startedAt" : "2026-08-01T16:31:50Z",
+    "transport" : "http"
+  }
+}
