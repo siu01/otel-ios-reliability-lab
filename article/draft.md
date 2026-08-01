@@ -31,6 +31,7 @@ published: false
 
 ところが同じ対策を500 Spanへ増やすと、forceFlushは完了したのに両presetとも
 回収0件になった。1,000 Spanでは先頭768件が消え、末尾232件だけが残った。
+そこでbatch上限だけを256→100へ下げると、500件も1,000件も全件回収へ戻せた。
 
 欠損を0にすることと、重複を0にすることは別問題だった。
 
@@ -386,6 +387,34 @@ fileへ入った。500件は`256 + 244`の両objectが上限を超え、file自�
 では、このsilent lossを発見できなかった。安全なSpan件数も普遍的ではない。
 attributeが長くなれば、同じ256件でもencoded byteは増える。
 
+## E010：batch上限だけを変えて0件を全件へ戻す
+
+SDKのwriterをpatchする前に、原因へ届く最小の設定変更を試した。
+`maxExportBatchSize`をrun metadataへ追加し、過去のrunは256としてdecodeする。
+E010では値だけを100へ変更した。他のpayload、background callback、15秒schedule、
+stateless exporter、SIGKILL、再起動手順はE009と同じである。
+
+| Persistence | Planned | E009 batch 256 | E010 batch 100 | E010 flush |
+|---|---:|---:|---:|---:|
+| Default | 500 | 0/500 | 500/500 | 147.76ms |
+| Default | 1,000 | 232/1,000 | 1,000/1,000 | 169.19ms |
+| Instant | 500 | 0/500 | 500/500 | 180.00ms |
+| Instant | 1,000 | 232/1,000 | 1,000/1,000 | 80.47ms |
+
+![E010でmaxExportBatchSizeだけを256から100へ下げ、500件と1000件を全件回収した比較図](./assets/e010-safe-chunk-recovery.png)
+
+500件は100件object 5個、1,000件は10個になったが、Persistence Orchestratorは
+それらを1 fileへappendした。再起動後も500件は138,591-byte、1,000件は
+277,091-byteのrequest各1回で、全sequenceを重複0で回収した。
+
+つまり、小さいchunkはHTTP requestを5回・10回へ増やさず、storage objectだけを
+byte上限の内側へ収めた。同じ欠損sequenceが設定1個で復活したため、E009の
+count-versus-byte説に対する直接の介入結果になった。
+
+ただし100はこのpayloadで安全だった値にすぎない。1 Spanのattributeが極端に
+大きければ、100未満でも256 KiBを超える。productionで必要なのは、固定件数を
+盲信することではなく、byte-aware splitかoversize errorの可視化である。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
@@ -409,8 +438,8 @@ E008ではその制御を実際の`scenePhase.background`へ移しても、両pr
 lifecycle windowで耐久境界を越える、という介入にできた。
 
 ただしE009で、その介入はbatch objectが内部byte上限へ収まる場合に限られると
-分かった。次の「可能にする」は、count-based chunkを安全側へ小さくし、500/1,000
-件の0/232を100%へ戻せるかである。
+分かった。E010ではcount-based chunkを100へ下げ、両presetで500件の0/500を
+500/500へ、1,000件の232/1,000を1,000/1,000へ戻した。
 
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
@@ -425,14 +454,15 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
 - retryの所有者を1層にする（mechanism proof済み）。
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
 - `scenePhase.background`でbatch queueをflushする（Simulatorでmechanism proof済み）。
-- `maxExportBatchSize`をencoded objectのbyte上限から安全側へ決める。
+- `maxExportBatchSize`をencoded objectのbyte上限から安全側へ決める
+  （このpayloadでは100でmechanism proof済み）。
 - oversizeを握りつぶさず、metric・log・export failureとして可視化する。
 - batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次は小さいexport chunkで同じ500/1,000件を回収できるかを先に検証し、その後に
-background flush時間とUI応答性のトレードオフを測る必要がある。
+次はattribute sizeを増やして100件chunkの限界を測り、その後にbackground flush時間と
+UI応答性のトレードオフを測る必要がある。
 
 ## 試行錯誤も証跡に残す
 
@@ -463,7 +493,8 @@ SDK全バージョン、実端末、すべてのネットワーク障害へ一�
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
-- `maxExportBatchSize=100`で500/1,000 Spanを全件回収できるか。
+- byte-aware splitとoversize error可視化をSDK外から実装できるか。
+- 大きなattributeで`maxExportBatchSize=100`の安全境界がどこまで動くか。
 - lifecycle flush中のmain-thread応答性とenergy costは何か。
 - 実端末でbackground flushがsuspension前に完了するか。途中で止めると何件残るか。
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
@@ -498,6 +529,10 @@ E008ではその最小介入を実際の`scenePhase.background`から呼んだ�
 切ったencoded objectが256 KiBを超え、writerはerrorを外へ返さなかった。
 forceFlush完了後でも500件は0、1,000件は末尾232件だけになった。APIの成功と
 データの耐久化は、この条件では同じ意味ではなかった。
+
+E010で`maxExportBatchSize`だけを100へ下げると、両presetとも500件・1,000件を
+全件回収した。5個・10個の小さいstorage objectは1 fileへまとまり、送信は1 requestの
+ままだった。失敗した単位と同じ場所へ介入すると、0件を全件へ戻せた。
 
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
