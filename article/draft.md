@@ -550,6 +550,12 @@ E011はその100件という暫定値をattribute増加だけで再び0/100へ�
 回復したのは「小さい数字」そのものではなく、失敗単位だったencoded objectを
 byte上限内へ収める介入である。
 
+E013では、その介入も単一Spanには使えないことを示した。batch 1でも256 KiBの
+payloadは両presetでfileもHTTP attemptも残さず0/1になった。E014は同じencoded
+byteを保存前に測り、分けられる100件・500件は全件回収し、分けられない1件は
+超過量つきの明示rejectionへ変えた。さらにE015は分割境界の探索をlinearから
+binary searchへ変え、同じpartitionと回収結果のままflushを85.1〜92.6%短縮した。
+
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
 正しくretryしても、組み合わせ全体が望むsemanticsになるとは限らない。
@@ -565,14 +571,17 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
 - `scenePhase.background`でbatch queueをflushする（Simulatorでmechanism proof済み）。
 - `maxExportBatchSize`をencoded objectのbyte上限から安全側へ決める
   （既知payloadへの緊急緩和。E011で普遍性なしと確認）。
-- encoded byteで事前分割し、単一Span oversizeは明示的に拒否・削減・通知する。
-- oversizeを握りつぶさず、metric・log・export failureとして可視化する。
+- encoded byteで事前分割する（SDK外wrapperでmechanism proof済み）。
+- 単一Span oversizeは明示的に拒否し、sequence・encoded byte・超過量を残す
+  （local evidenceとexport failureまでproof済み。productionの通知経路は未検証）。
+- binary searchは正確な境界探索を高速化するが、SDK内部のencode表現と上限へ
+  結合するため、SDK更新時に互換testを行う。
 - batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次はbatch 1でも保存できない単一Spanを確認し、その後にbyte-aware policyと
-background flush時間・UI応答性のトレードオフを測る必要がある。
+次はbackground flush中のmain-thread応答性を直接測り、byte-aware policyの
+計算時間をlifecycle budgetの中で評価する必要がある。
 
 ## 試行錯誤も証跡に残す
 
