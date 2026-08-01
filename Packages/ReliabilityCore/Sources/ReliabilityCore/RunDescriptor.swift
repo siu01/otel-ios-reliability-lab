@@ -33,6 +33,6 @@ public enum Transport: String, Codable, CaseIterable, Sendable {
 
 public enum PersistenceMode: String, Codable, CaseIterable, Sendable {
     case disabled
-    case officialDecorator
+    case officialDefault
+    case officialInstant
 }
-

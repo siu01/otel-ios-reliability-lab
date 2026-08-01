@@ -8,7 +8,8 @@
 
 Persisting ended spans before network export will improve eventual delivery after
 temporary failure and relaunch, at the cost of latency, storage, and possible
-duplicate delivery.
+duplicate delivery. Synchronous persistence may survive abrupt termination more
+often than the default asynchronous preset, while imposing greater runtime cost.
 
 This is a hypothesis, not a conclusion.
 
@@ -49,4 +50,3 @@ A result can enter the article only when all of the following exist:
 3. Raw generated and received identifiers.
 4. A deterministic reconciliation report.
 5. A notebook entry covering surprises and limitations.
-

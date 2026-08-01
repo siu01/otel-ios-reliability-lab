@@ -13,7 +13,7 @@ struct RunDescriptorTests {
             plannedSpanCount: 1_000,
             startedAt: Date(timeIntervalSince1970: 1_785_582_400),
             transport: .http,
-            persistence: .officialDecorator
+            persistence: .officialInstant
         )
 
         let encoded = try JSONEncoder().encode(original)
@@ -22,4 +22,3 @@ struct RunDescriptorTests {
         #expect(decoded == original)
     }
 }
-

@@ -19,6 +19,11 @@ Use the official persistence decorator as the first durable configuration.
 Compare it with the standard non-persistent exporters before proposing custom
 code.
 
+Test both official presets. The 2.5.0 source defines `lowRuntimeImpact` (also the
+default) with asynchronous disk writes and `instantDataDelivery` with synchronous
+disk writes. Abrupt termination can therefore produce materially different
+results even though both configurations are described as persistent.
+
 Pin the initial investigation to:
 
 - `opentelemetry-swift` 2.5.0, tag commit
@@ -34,4 +39,3 @@ Pin the initial investigation to:
   gap that cannot be fixed by configuration.
 - Any discovered defect should be reduced to a minimal reproduction suitable for
   an upstream issue or pull request.
-
