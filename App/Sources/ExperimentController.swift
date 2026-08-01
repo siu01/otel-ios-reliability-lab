@@ -11,6 +11,8 @@ final class ExperimentController: ObservableObject {
     @Published var processorScheduleDelayMilliseconds = 250
     @Published var maxExportBatchSize = 256
     @Published var payloadAttributeBytes = 0
+    @Published var payloadAttributeSecondaryBytes = 0
+    @Published var payloadAttributePattern: PayloadAttributePattern = .constant
     @Published var persistenceObjectPolicy: PersistenceObjectPolicy = .sdkNative
     @Published var persistenceObjectByteBudget = 262_144
     @Published var persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy =
@@ -63,6 +65,12 @@ final class ExperimentController: ObservableObject {
         }
         if let payloadAttributeBytes = launchConfiguration.payloadAttributeBytes {
             self.payloadAttributeBytes = payloadAttributeBytes
+        }
+        if let secondaryBytes = launchConfiguration.payloadAttributeSecondaryBytes {
+            payloadAttributeSecondaryBytes = secondaryBytes
+        }
+        if let payloadPattern = launchConfiguration.payloadAttributePattern {
+            payloadAttributePattern = payloadPattern
         }
         if let persistenceObjectPolicy = launchConfiguration.persistenceObjectPolicy {
             self.persistenceObjectPolicy = persistenceObjectPolicy
@@ -122,6 +130,8 @@ final class ExperimentController: ObservableObject {
                     processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     maxExportBatchSize: maxExportBatchSize,
                     payloadAttributeBytes: payloadAttributeBytes,
+                    payloadAttributeSecondaryBytes: payloadAttributeSecondaryBytes,
+                    payloadAttributePattern: payloadAttributePattern,
                     persistenceObjectPolicy: persistenceObjectPolicy,
                     persistenceObjectByteBudget: persistenceObjectByteBudget,
                     persistenceObjectPartitionStrategy: persistenceObjectPartitionStrategy,
@@ -160,6 +170,8 @@ final class ExperimentController: ObservableObject {
                     processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     maxExportBatchSize: maxExportBatchSize,
                     payloadAttributeBytes: payloadAttributeBytes,
+                    payloadAttributeSecondaryBytes: payloadAttributeSecondaryBytes,
+                    payloadAttributePattern: payloadAttributePattern,
                     persistenceObjectPolicy: persistenceObjectPolicy,
                     persistenceObjectByteBudget: persistenceObjectByteBudget,
                     persistenceObjectPartitionStrategy: persistenceObjectPartitionStrategy,
