@@ -10,13 +10,17 @@ let package = Package(
     ],
     products: [
         .library(name: "ReliabilityCore", targets: ["ReliabilityCore"]),
+        .executable(name: "reliability-reconcile", targets: ["ReliabilityCLI"]),
     ],
     targets: [
         .target(name: "ReliabilityCore"),
+        .executableTarget(
+            name: "ReliabilityCLI",
+            dependencies: ["ReliabilityCore"]
+        ),
         .testTarget(
             name: "ReliabilityCoreTests",
             dependencies: ["ReliabilityCore"]
         ),
     ]
 )
-
