@@ -67,6 +67,8 @@ for the pinned Swift SDK:
 - E009: scaling that intervention exposed a silent 256-KiB object boundary;
   both presets recovered 0/500 and only the final 232/1,000 even though provider
   force-flush reported completion.
+- E010: reducing only `maxExportBatchSize` from 256 to 100 changed those direct
+  comparisons to 500/500 and 1,000/1,000 for both presets with no duplicates.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -78,6 +80,8 @@ The real-background intervention is summarized in
 [`experiments/E008-background-transition/results.md`](experiments/E008-background-transition/results.md).
 The count-versus-byte size failure is summarized in
 [`experiments/E009-background-flush-scale/results.md`](experiments/E009-background-flush-scale/results.md).
+The configuration intervention is summarized in
+[`experiments/E010-safe-export-chunk/results.md`](experiments/E010-safe-export-chunk/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -101,7 +105,7 @@ scripts/run-flush-barrier.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <explicit-or-durabilityBarrier>
 scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <disabled-or-explicit> \
-  [<experiment-id> <span-count> [<schedule-delay-ms>]]
+  [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size>]]]
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -122,3 +126,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E007 | Can a lifecycle flush close the upstream durability gap? | Complete: provider flush changed 0/100 to 100/100 for both presets |
 | E008 | Does the same intervention fit a real iOS background transition? | Complete: no-flush lost 100/100; background flush recovered 100/100 for both presets |
 | E009 | Does background flush remain durable from 100 to 1,000 spans? | Complete: both presets fell from 100/100 to 0/500 and 232/1,000 at the 256-KiB object boundary |
+| E010 | Can smaller export chunks avoid the silent byte-limit loss? | Complete: batch 100 restored exact 500/500 and 1,000/1,000 recovery for both presets |
