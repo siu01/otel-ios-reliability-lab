@@ -463,6 +463,62 @@ preset、実background callback、15秒schedule、SIGKILL、再起動手順を�
 0/100→100/100となった。ただし50も普遍的な安全値ではない。1 Spanだけで上限を
 越える場合は分割不能なので、次はその最小反例を測る必要がある。
 
+## E013：batch 1でも消える最小反例
+
+件数分割の限界を確かめるため、1 runを1 Span、`maxExportBatchSize`を1へ固定した。
+変えたのは`lab.payload`の長さだけである。
+
+| Persistence | Payload / span | Encoded object | Flush | Received |
+|---|---:|---:|---:|---:|
+| Default | 240 KiB | 246,874 bytes | 113.02ms | 1/1 |
+| Default | 256 KiB | 保存なし | 112.09ms | 0/1 |
+| Instant | 240 KiB | 246,876 bytes | 83.68ms | 1/1 |
+| Instant | 256 KiB | 保存なし | 51.86ms | 0/1 |
+| Instant | 300 KiB | 保存なし | 83.03ms | 0/1 |
+
+256 KiB条件は両presetともfile 0、HTTP attempt 0だった。batchはすでに1なので、
+count tuningではこれ以上分割できない。それでもflush時間は成功条件と同程度で、
+呼び出し側からは単一Spanが失われた事実を判定できなかった。
+
+## E014：encoded byteで分け、分けられない1件は明示的に拒否する
+
+SDKの外側に`ByteBudgetingSpanExporter`を置いた。Span配列を公式Persistence 2.5.0と
+同じ形でJSON encodeし、262,144 bytes以内のprefixへ分けてから公式Persistenceへ
+渡す。1 Spanだけで上限を越えた場合は、黙って成功扱いにせず`rejectedOversize`を
+台帳へ残し、export failureを返す。
+
+| Persistence | Spans / payload | SDK-native | Byte-aware | Object partition |
+|---|---:|---:|---:|---|
+| Default | 100 / 1,536B | 0/100 | 100/100 | 98 + 2 |
+| Instant | 100 / 1,536B | 0/100 | 100/100 | 98 + 2 |
+| Default | 500 / 0B | 0/500 | 500/500 | 243 + 13 + 242 + 2 |
+| Instant | 500 / 0B | 0/500 | 500/500 | 243 + 13 + 242 + 2 |
+
+100件と500件の既知の全損は、生成sequenceを重複なく全件回収した。一方、256 KiBの
+単一Spanは救えなかったが、Defaultでは263,257 bytes、Instantでは263,259 bytesと
+超過量を記録し、0/1を明示的なrejectionへ変えた。「必ず保存する」魔法ではなく、
+回収可能なbatchと不可能な単一objectを区別できるpolicyである。
+
+![E013からE015でbyte-aware policyがsilent lossを全件回収し、単一oversizeを明示rejectionへ変え、binary searchでflushを短縮した図](./assets/e013-e015-byte-policy.png)
+
+## E015：正しい分割を、backgroundで待てる速さへ近づける
+
+E014のlinear prefix探索は、候補を1件ずつencodeするためO(n²)だった。分割結果を
+変えず、最大prefixをbinary searchで探す実装へ置き換えた。core testではlinearと
+同じdecisionを返すこと、500件でもencoder callが30回未満であることを固定した。
+
+| Persistence | Spans / payload | Linear flush | Binary flush | Reduction | Received |
+|---|---:|---:|---:|---:|---:|
+| Default | 100 / 1,536B | 2,072.66ms | 158.24ms | 92.4% | 100/100 |
+| Instant | 100 / 1,536B | 906.54ms | 135.32ms | 85.1% | 100/100 |
+| Default | 500 / 0B | 7,035.96ms | 520.24ms | 92.6% | 500/500 |
+| Instant | 500 / 0B | 4,500.46ms | 540.42ms | 88.0% | 500/500 |
+
+4条件ともE014と同じsequence集合・object partition・重複0を維持した。正しさだけを
+直しても、7秒の同期処理をbackground callbackに置けば別の失敗を作る。E015は
+探索方法だけで最大92.6%短縮したが、次はこの時間中にmain queueが実際に止まるかを
+計測する。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
