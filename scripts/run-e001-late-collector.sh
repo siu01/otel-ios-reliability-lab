@@ -81,6 +81,7 @@ xcrun simctl launch \
   "$simulator_udid" \
   "$bundle_id" \
   --lab-autorun \
+  --lab-experiment-id=E001 \
   "--lab-run-id=$span_run_id" \
   --lab-span-count=100 \
   --lab-transport=http \

@@ -13,7 +13,7 @@ final class ExperimentController: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var isReconciled = false
 
-    let experimentID = ExperimentID(rawValue: "E000")!
+    let experimentID: ExperimentID
     private let telemetry = TelemetryRuntime()
     private let launchConfiguration: AutomationLaunchConfiguration
     private var didAutorun = false
@@ -21,6 +21,7 @@ final class ExperimentController: ObservableObject {
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
         let launchConfiguration = AutomationLaunchConfiguration(arguments: arguments)
         self.launchConfiguration = launchConfiguration
+        experimentID = launchConfiguration.experimentID ?? ExperimentID(rawValue: "E000")!
 
         if let spanCount = launchConfiguration.spanCount {
             plannedSpanCount = spanCount
