@@ -140,6 +140,8 @@ timeout、成否を`http-attempts.jsonl`へ記録した。Collector停止時間�
 | 8秒 | 2 | 83,018 | 300 | 3x |
 | 10秒 | 2 | 83,018 | 300 | 3x |
 
+![E003で完了したHTTP失敗回数と配送倍率を比較したグラフ](./assets/e003-retry-amplification.png)
+
 8秒runのHTTP lifecycleは次の通りだった。
 
 1. 27,818 bytes：接続拒否で失敗。
