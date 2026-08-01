@@ -83,3 +83,32 @@ the timeout. Do not replace it with a smaller unregistered count.
 E009 measures a cooperative iOS Simulator callback and loopback recovery. It
 does not measure main-thread frame stalls, energy, real-device background time,
 jetsam, storage pressure, or an operating-system kill during the flush itself.
+
+## Protocol amendment after excluded attempt 001
+
+The first default 100-span run was preserved but excluded. Although the host
+requested Safari immediately after ledger observation, SwiftUI recorded
+`backgroundObserved` 6.30 seconds after ledger commit, beyond the registered
+five-second processor schedule. Its 2.77-ms flush could not isolate a pending
+batch.
+
+Before running another scale condition, the schedule-control window is widened
+to 15,000 ms. Span counts, hypotheses, background mechanism, stop rule, and
+capture window do not change. The runner must now record the app-timestamp
+ledger-to-background interval and mark a run invalid when that interval reaches
+its configured schedule delay.
+
+The accepted comparison uses new IDs rather than reusing the excluded run or
+silently changing metadata:
+
+| Persistence | Spans | Evidence directory | Span run ID |
+|---|---:|---|---|
+| default | 100 | `E009-default-background-100-002` | `00000000-0000-0000-0009-000000000007` |
+| default | 500 | `E009-default-background-500-002` | `00000000-0000-0000-0009-000000000008` |
+| default | 1,000 | `E009-default-background-1000-002` | `00000000-0000-0000-0009-000000000009` |
+| instant | 100 | `E009-instant-background-100-002` | `00000000-0000-0000-0009-000000000010` |
+| instant | 500 | `E009-instant-background-500-002` | `00000000-0000-0000-0009-000000000011` |
+| instant | 1,000 | `E009-instant-background-1000-002` | `00000000-0000-0000-0009-000000000012` |
+
+This amendment was committed after inspecting attempt 001 and before executing
+any replacement or larger-workload condition.
