@@ -69,6 +69,11 @@ for the pinned Swift SDK:
   force-flush reported completion.
 - E010: reducing only `maxExportBatchSize` from 256 to 100 changed those direct
   comparisons to 500/500 and 1,000/1,000 for both presets with no duplicates.
+- E011: with 100 spans and batch 100 fixed, increasing one attribute from 1,024
+  to 1,536 bytes changed both presets from 100/100 to silent 0/100 while flush
+  still completed in about the same time.
+- E012: lowering only that payload-heavy export batch from 100 to 50 restored
+  all 1,536- and 2,048-byte conditions to 100/100 with no duplicates.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -82,6 +87,10 @@ The count-versus-byte size failure is summarized in
 [`experiments/E009-background-flush-scale/results.md`](experiments/E009-background-flush-scale/results.md).
 The configuration intervention is summarized in
 [`experiments/E010-safe-export-chunk/results.md`](experiments/E010-safe-export-chunk/results.md).
+The payload-size boundary is summarized in
+[`experiments/E011-payload-size-boundary/results.md`](experiments/E011-payload-size-boundary/results.md).
+Its matched chunk intervention is summarized in
+[`experiments/E012-payload-chunk-recovery/results.md`](experiments/E012-payload-chunk-recovery/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -105,7 +114,8 @@ scripts/run-flush-barrier.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <explicit-or-durabilityBarrier>
 scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <disabled-or-explicit> \
-  [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size>]]]
+  [<experiment-id> <span-count> \
+  [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes>]]]]
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -127,3 +137,5 @@ their sources of truth are `project.yml` and the pinned installer.
 | E008 | Does the same intervention fit a real iOS background transition? | Complete: no-flush lost 100/100; background flush recovered 100/100 for both presets |
 | E009 | Does background flush remain durable from 100 to 1,000 spans? | Complete: both presets fell from 100/100 to 0/500 and 232/1,000 at the 256-KiB object boundary |
 | E010 | Can smaller export chunks avoid the silent byte-limit loss? | Complete: batch 100 restored exact 500/500 and 1,000/1,000 recovery for both presets |
+| E011 | Does a safe span count remain safe as attribute payload grows? | Complete: at batch 100, 1,024 bytes recovered 100/100 while 1,536 bytes silently lost 100/100 for both presets |
+| E012 | Can smaller chunks recover those exact payload-heavy spans? | Complete: batch 50 restored all four 1,536/2,048-byte conditions to 100/100 with no duplicates |
