@@ -1,5 +1,5 @@
 ---
-title: "永続化したら欠損0、でもSpanが3倍になった：OpenTelemetry Swiftの二重リトライを壊して測る"
+title: "永続化しても0件、retryしたら3倍：OpenTelemetry Swiftの配送境界を壊して測る"
 emoji: "🧪"
 type: "tech"
 topics: ["opentelemetry", "swift", "ios", "observability"]
@@ -21,6 +21,10 @@ published: false
 今回の8秒障害では、永続化なしは0件、公式Defaultは100件、公式Instantは
 200件届いた。さらに条件を分解すると、100件しか生成していないのに300件
 届くrunまで再現した。
+
+一方、100回の`span.end()`が完了した直後にプロセスを止めると、永続化をONに
+していても再起動後の回収は0件だった。少し待ってファイルが完成すると100件へ
+戻った。
 
 欠損を0にすることと、重複を0にすることは別問題だった。
 
@@ -217,6 +221,51 @@ Collectorを起動し、同じrun IDと永続化ディレクトリを指定し�
 ただし、ファイルを観測してから終了した点は意図的な境界条件である。非同期
 書き込みの途中、jetsam、クラッシュ、端末再起動まで生存すると一般化はしない。
 
+## E006：`span.end()`済みでも、ファイルになる前なら0件
+
+E005は「完全なファイルを新しいプロセスが読めるか」には答えたが、ファイルが
+できる前を避けていた。そこでE006では、アプリ独自の`generated.jsonl`に100件が
+揃った瞬間をホストから検知し、追加待機0/50/150/300msでプロセスへ直接
+`SIGKILL`を送った。Collectorはプロセス停止後に初めて起動した。
+
+| Persistence | 追加待機 | 台帳観測→SIGKILL要求 | 終了前ファイル | 再起動後received |
+|---|---:|---:|---:|---:|
+| Default | 0ms | 55ms | 0 | 0/100 |
+| Default | 0ms追試 | 14ms | 0 | 0/100 |
+| Default | 50ms | 73ms | 0 | 0/100 |
+| Default | 150ms | 181ms | 0 | 0/100 |
+| Default | 300ms | 331ms | 1 | 100/100 |
+| Instant | 0ms | 19ms | 0 | 0/100 |
+| Instant | 300ms | 328ms | 1 | 100/100 |
+
+0件runは、再起動後のHTTP attemptも0だった。存在しないファイルからは何も
+再送できない。300ms runは終了要求前に完全なファイルが見えており、再起動後の
+27,818-byte request 1回で100件を一度ずつ回収した。途中の50件だけ残るような
+結果はなく、この条件では100件batch単位で0か100へ分かれた。
+
+固定したソースでは、`BatchSpanProcessor`が終了済みSpanをメモリqueueへ置き、
+このアプリの設定では最大0.25秒待ってからexporterへ渡す。Instantの同期書き込み
+も、そのPersistence Exporterが呼ばれてから始まる。だからInstantでも、その
+上流で止めれば0件になり得る。
+
+```mermaid
+flowchart LR
+  A["span.end() × 100"] --> B["BatchSpanProcessor: memory"]
+  B --> C["Persistence file"]
+  C --> D["process relaunch"]
+  D --> E["Collector: 100"]
+  B -. "SIGKILL: 0 recovered" .-> X["lost"]
+```
+
+なお最初の0ms runは`simctl terminate`を使ったが、停止完了まで約471msかかり、
+その間にファイルが完成して100件を回収した。これを0ms成功として採用すると結論を
+誤る。runは削除せず校正失敗として保存し、停止手段を直接SIGKILLへ変更してから
+行列を再開した。
+
+181msで0、328/331msで100という値は、このSimulatorとホスト観測における境界で
+あり、SDKの普遍的なSLAではない。重要なのはミリ秒の数字より、`span.end()`と
+「新しいプロセスが回収できる」の間に別の耐久化境界があることだ。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
@@ -226,6 +275,10 @@ Collectorを起動し、同じrun IDと永続化ディレクトリを指定し�
 さらに、完全な永続ファイルを確認後にプロセスを終了しても、DefaultとInstantの
 両方が新しいプロセスから100件を一意に回収できた。少なくともこの制御条件では、
 「元のプロセスが死んだら終わり」でもなかった。
+
+ただしE006により、終了済みSpanが自動的に耐久化済みになるわけではないことも
+分かった。新しいプロセスが回収できたのは、完全なファイルへ到達したbatchだけ
+だった。
 
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
@@ -239,11 +292,13 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
 
 - retryの所有者を1層にする（mechanism proof済み）。
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
+- lifecycle通知でbatch queueをflushし、ファイル到達を早める。
+- batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次の実験では、非同期書き込みの途中で終了した場合と、stateless exporterの
-protocol parityを比較する。
+次の実験では、lifecycle-aware flushでこの0件区間を閉じられるかと、ブロック時間
+のコストを比較する。
 
 ## 試行錯誤も証跡に残す
 
@@ -264,13 +319,16 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
 - 各停止時間は1 run。ただし8秒3倍は非計測E002でも独立再現した。
 - 再起動試験は`simctl terminate`による制御された終了であり、ファイル観測後に
   実行した。
+- 書き込み境界試験はSimulatorプロセスへの直接SIGKILLであり、実端末のjetsamや
+  ユーザー終了と同一ではない。
 
 SDK全バージョン、実端末、すべてのネットワーク障害へ一般化はしない。
 
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
-- 非同期永続化の書き込み境界で終了すると何件残るか。
+- lifecycle-aware flushで0件の上流windowを閉じられるか。
+- loss改善とmain-thread停止時間のtrade-offは何か。
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
 - 1,000 Span時の書き込み時間、ストレージ、メインスレッド影響。
 - downstream dedupに必要な状態量。
@@ -285,5 +343,11 @@ exporterの組み合わせでは、失敗ごとに同じbatchを2層が保持し
 完全な永続ファイルを確認してプロセスを終了したE005でも、DefaultとInstantは
 再起動後に100件を一度ずつ回収した。
 
+しかしE006では、100回の`span.end()`と独自台帳の記録が終わっていても、
+Persistence fileがまだなければ再起動後は0件だった。300ms条件でファイルが
+見えてからは再び100件を回収した。耐久境界は設定フラグでもAPI callでもなく、
+次のプロセスが読める状態へbatchが到達したかどうかにある。
+
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
-telemetryを各層が何コピー保持するかまで測る必要がある。
+telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
+渡るかまで測る必要がある。
