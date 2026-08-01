@@ -93,3 +93,30 @@ persistence directory.
 An absent HTTP attempt log after a no-file run is expected and is represented
 as an empty evidence file. A corrupt or undecodable file must be preserved and
 reported rather than silently rerun.
+
+## Protocol amendment after the first registered run
+
+`E006-default-ledger000-001` revealed that `simctl terminate` was too slow for
+the intended boundary. No file was visible at the pre-request check, but the
+command took about 471 milliseconds to return and a complete file appeared in
+that interval. The run recovered 100/100 and is preserved as a controlled-stop
+calibration, not included in the sharp-stop comparison.
+
+Before executing any other matrix entry, the stop mechanism was changed to
+direct `SIGKILL` of the host-visible Simulator app PID returned by `simctl
+launch`. A diagnostic launch confirmed that the returned PID identifies the
+app executable and disappears after the signal. A small compiled UTC probe also
+replaced Perl startup in the critical path, and two nonessential timestamp
+probes were removed.
+
+All remaining registered conditions use direct `SIGKILL`. The following run
+replaces the first calibration entry while preserving the originally registered
+second zero-offset repetition:
+
+| Persistence | Offset | Evidence directory | Span run ID |
+|---|---:|---|---|
+| default | 0 ms | `E006-default-ledger000-003` | `00000000-0000-0000-0006-000000000008` |
+
+The signal is intentionally abrupt and differs from user-initiated app
+termination. The host still cannot prove the exact SDK instruction at stop
+time, so all original boundary-classification limits remain in force.
