@@ -17,6 +17,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-flush=explicit",
             "--lab-flush-trigger=background",
             "--lab-schedule-delay-ms=5000",
+            "--lab-max-export-batch-size=100",
             "--lab-http-client=instrumentedBase",
             "--lab-exporter=statelessHTTP",
         ])
@@ -31,6 +32,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.flushMode == .explicit)
         #expect(config.flushTrigger == .background)
         #expect(config.processorScheduleDelayMilliseconds == 5_000)
+        #expect(config.maxExportBatchSize == 100)
         #expect(config.httpClientMode == .instrumentedBase)
         #expect(config.exporterMode == .statelessHTTP)
     }
@@ -46,6 +48,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-flush=maybe",
             "--lab-flush-trigger=whenever",
             "--lab-schedule-delay-ms=0",
+            "--lab-max-export-batch-size=0",
             "--lab-http-client=magic",
             "--lab-exporter=rememberEverything",
         ])
@@ -59,6 +62,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.flushMode == nil)
         #expect(config.flushTrigger == nil)
         #expect(config.processorScheduleDelayMilliseconds == nil)
+        #expect(config.maxExportBatchSize == nil)
         #expect(config.httpClientMode == nil)
         #expect(config.exporterMode == nil)
     }

@@ -10,6 +10,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let flushMode: FlushMode
     public let flushTrigger: FlushTrigger
     public let processorScheduleDelayMilliseconds: Int
+    public let maxExportBatchSize: Int
     public let httpClientMode: HTTPClientMode
     public let exporterMode: ExporterMode
 
@@ -23,6 +24,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         flushMode: FlushMode = .explicit,
         flushTrigger: FlushTrigger = .afterBurst,
         processorScheduleDelayMilliseconds: Int = 250,
+        maxExportBatchSize: Int = 256,
         httpClientMode: HTTPClientMode = .officialBase,
         exporterMode: ExporterMode = .officialStateful
     ) {
@@ -31,6 +33,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             processorScheduleDelayMilliseconds > 0,
             "A processor schedule delay must be positive"
         )
+        precondition(maxExportBatchSize > 0, "A maximum export batch size must be positive")
         self.experimentID = experimentID
         self.runID = runID
         self.plannedSpanCount = plannedSpanCount
@@ -40,6 +43,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.flushMode = flushMode
         self.flushTrigger = flushTrigger
         self.processorScheduleDelayMilliseconds = processorScheduleDelayMilliseconds
+        self.maxExportBatchSize = maxExportBatchSize
         self.httpClientMode = httpClientMode
         self.exporterMode = exporterMode
     }
@@ -54,6 +58,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case flushMode
         case flushTrigger
         case processorScheduleDelayMilliseconds
+        case maxExportBatchSize
         case httpClientMode
         case exporterMode
     }
@@ -83,6 +88,18 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             )
         }
         processorScheduleDelayMilliseconds = decodedScheduleDelay
+        let decodedMaxExportBatchSize = try container.decodeIfPresent(
+            Int.self,
+            forKey: .maxExportBatchSize
+        ) ?? 256
+        guard decodedMaxExportBatchSize > 0 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .maxExportBatchSize,
+                in: container,
+                debugDescription: "Maximum export batch size must be positive"
+            )
+        }
+        maxExportBatchSize = decodedMaxExportBatchSize
         httpClientMode = try container.decodeIfPresent(
             HTTPClientMode.self,
             forKey: .httpClientMode
@@ -107,6 +124,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             processorScheduleDelayMilliseconds,
             forKey: .processorScheduleDelayMilliseconds
         )
+        try container.encode(maxExportBatchSize, forKey: .maxExportBatchSize)
         try container.encode(httpClientMode, forKey: .httpClientMode)
         try container.encode(exporterMode, forKey: .exporterMode)
     }
