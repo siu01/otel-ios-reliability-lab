@@ -167,6 +167,29 @@ bodyは失敗ごとに27,600 bytesずつ増え、最後のrequestをCollectorが
 の接続拒否だった。「timeout後も古いURLSessionTaskが生き残っただけ」という
 別の説明は、この行列には不要だった。
 
+## E004：retryを永続化1層だけにすると100件へ戻った
+
+原因が二重のretry stateなら、HTTP exporterから内部pendingを外せばよい。
+そこで、受け取った`SpanData`をOTLP protobuf requestへ変換して送るが、失敗時に
+内部保持しないlab用stateless exporterを作った。永続ファイルとretry timingは
+引き続き公式Persistence Exporterが担当する。
+
+10秒障害で、stateful/statelessの両方が成功前に2回の接続拒否を完了した。
+
+| Persistence配下のexporter | HTTP body bytes | Total received | Duplicate | Missing |
+|---|---|---:|---:|---:|
+| 公式stateful | 27,818 → 55,418 → 83,018 | 300 | 200 | 0 |
+| lab stateless | 27,818 → 27,818 → 27,818 | 100 | 0 | 0 |
+
+8秒のstateless runも、1回失敗後に同じ27,818-byte bodyを再送し、100件を一度ずつ
+回収した。retry stateを永続化1層へ限定することで、欠損0を維持したまま3倍を
+1倍へ戻せた。
+
+これは原因に対する介入結果であり、相関だけではない。一方、このlab exporterは
+header、compression、metrics、shutdownなど公式実装の全機能を再実装したもの
+ではない。設計原則のmechanism proofであって、そのままproduction投入できる
+完成品とは主張しない。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
@@ -179,15 +202,16 @@ bodyは失敗ごとに27,600 bytesずつ増え、最後のrequestをCollectorが
 
 ## 実運用で考えられる対策
 
-今回確認できた事実は「同じtrace ID/span IDの再送」までで、対策の優劣はまだ
-未検証である。候補は次の3つになる。
+E004により「retryの所有者を1層にする」方針は、この実験条件では欠損0・重複0を
+両立した。ただしproduction向けの実装方式と、他の対策とのコスト比較は未検証で
+ある。
 
-- retryの所有者を1層にする。
+- retryの所有者を1層にする（mechanism proof済み）。
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次の実験では、stateless HTTP exporterによる増幅停止と、再起動をまたぐ回収を
+次の実験では、stateless exporterのprotocol parityと、再起動をまたぐ回収を
 比較する。
 
 ## 試行錯誤も証跡に残す
@@ -212,7 +236,7 @@ SDK全バージョン、実端末、すべてのネットワーク障害へ一�
 
 ## 次に壊すもの
 
-- stateless exporterで二重retry増幅を止められるか。
+- stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
 - アプリ強制終了・再起動後も永続ファイルを回収できるか。
 - 1,000 Span時の書き込み時間、ストレージ、メインスレッド影響。
 - downstream dedupに必要な状態量。
@@ -222,7 +246,8 @@ SDK全バージョン、実端末、すべてのネットワーク障害へ一�
 OpenTelemetry Swiftの公式Persistence Exporterは、8秒の送信先障害に対して
 0件だったSpanを100件回収できた。しかしInstant presetと今回のOTLP/HTTP
 exporterの組み合わせでは、失敗ごとに同じbatchを2層が保持し、成功requestが
-100→200→300 Spanへ増幅した。
+100→200→300 Spanへ増幅した。HTTP側をstatelessにしてretryの所有者を
+永続化1層へ絞ると、同じ2回失敗でも成功requestは100 Spanのままになった。
 
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するかまで測る必要がある。
