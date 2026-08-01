@@ -21,6 +21,7 @@ struct RunDescriptorTests {
             payloadAttributeBytes: 1_536,
             persistenceObjectPolicy: .encodedByteBudget,
             persistenceObjectByteBudget: 240_000,
+            persistenceObjectPartitionStrategy: .binarySearchEncoding,
             httpClientMode: .instrumentedBase,
             exporterMode: .statelessHTTP
         )
@@ -49,6 +50,7 @@ struct RunDescriptorTests {
         object.removeValue(forKey: "payloadAttributeBytes")
         object.removeValue(forKey: "persistenceObjectPolicy")
         object.removeValue(forKey: "persistenceObjectByteBudget")
+        object.removeValue(forKey: "persistenceObjectPartitionStrategy")
         object.removeValue(forKey: "httpClientMode")
         object.removeValue(forKey: "exporterMode")
         let legacyData = try JSONSerialization.data(withJSONObject: object)
@@ -62,6 +64,7 @@ struct RunDescriptorTests {
         #expect(decoded.payloadAttributeBytes == 0)
         #expect(decoded.persistenceObjectPolicy == .sdkNative)
         #expect(decoded.persistenceObjectByteBudget == 262_144)
+        #expect(decoded.persistenceObjectPartitionStrategy == .linearPrefixEncoding)
         #expect(decoded.httpClientMode == .officialBase)
         #expect(decoded.exporterMode == .officialStateful)
     }

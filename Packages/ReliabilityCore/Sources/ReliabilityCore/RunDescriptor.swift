@@ -14,6 +14,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let payloadAttributeBytes: Int
     public let persistenceObjectPolicy: PersistenceObjectPolicy
     public let persistenceObjectByteBudget: Int
+    public let persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy
     public let httpClientMode: HTTPClientMode
     public let exporterMode: ExporterMode
 
@@ -31,6 +32,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         payloadAttributeBytes: Int = 0,
         persistenceObjectPolicy: PersistenceObjectPolicy = .sdkNative,
         persistenceObjectByteBudget: Int = 262_144,
+        persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy = .linearPrefixEncoding,
         httpClientMode: HTTPClientMode = .officialBase,
         exporterMode: ExporterMode = .officialStateful
     ) {
@@ -58,6 +60,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.payloadAttributeBytes = payloadAttributeBytes
         self.persistenceObjectPolicy = persistenceObjectPolicy
         self.persistenceObjectByteBudget = persistenceObjectByteBudget
+        self.persistenceObjectPartitionStrategy = persistenceObjectPartitionStrategy
         self.httpClientMode = httpClientMode
         self.exporterMode = exporterMode
     }
@@ -76,6 +79,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case payloadAttributeBytes
         case persistenceObjectPolicy
         case persistenceObjectByteBudget
+        case persistenceObjectPartitionStrategy
         case httpClientMode
         case exporterMode
     }
@@ -145,6 +149,10 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             )
         }
         persistenceObjectByteBudget = decodedPersistenceObjectByteBudget
+        persistenceObjectPartitionStrategy = try container.decodeIfPresent(
+            ByteBudgetPartitionStrategy.self,
+            forKey: .persistenceObjectPartitionStrategy
+        ) ?? .linearPrefixEncoding
         httpClientMode = try container.decodeIfPresent(
             HTTPClientMode.self,
             forKey: .httpClientMode
@@ -175,6 +183,10 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         try container.encode(
             persistenceObjectByteBudget,
             forKey: .persistenceObjectByteBudget
+        )
+        try container.encode(
+            persistenceObjectPartitionStrategy,
+            forKey: .persistenceObjectPartitionStrategy
         )
         try container.encode(httpClientMode, forKey: .httpClientMode)
         try container.encode(exporterMode, forKey: .exporterMode)
