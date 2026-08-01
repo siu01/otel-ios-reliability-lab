@@ -415,6 +415,54 @@ count-versus-byte説に対する直接の介入結果になった。
 大きければ、100未満でも256 KiBを超える。productionで必要なのは、固定件数を
 盲信することではなく、byte-aware splitかoversize errorの可視化である。
 
+## E011：「100件なら安全」をattribute 512Bで壊す
+
+E010の最後の注意を実験にした。Span総数と`maxExportBatchSize`を100に固定し、
+全Spanへ同じ長さの`lab.payload`を追加する。payload byte数はrun metadata、画面、
+自動化、reconciliationへ通し、過去のrunは0としてdecodeする。
+
+| Persistence | Payload / span | Flush | 終了前file | Received |
+|---|---:|---:|---:|---:|
+| Instant | 0B | 55.78ms | 107,789 bytes | 100/100 |
+| Instant | 1,024B | 48.17ms | 213,715 bytes | 100/100 |
+| Instant | 1,536B | 48.88ms | 0 | 0/100 |
+| Instant | 2,048B | 49.36ms | 0 | 0/100 |
+| Default | 1,024B | 51.93ms | 213,688 bytes | 100/100 |
+| Default | 1,536B | 49.04ms | 0 | 0/100 |
+
+1,024Bから1,536Bへ、1 Spanあたり512B増やしただけで、両presetが100/100から
+0/100へ変わった。失敗条件では停止前も再起動後もfile 0、HTTP attempt 0だった。
+それでもforceFlushは成功条件とほぼ同じ49ms前後で完了した。
+
+0Bから1,024Bへの実測増分を同じ形のまま外挿すると、1,536B条件のobjectは約
+264,915 bytesになる。262,144-byte上限をわずかに越える予測と、実際のfile 0が
+一致した。つまり「batch 100」は安全策ではなく、その時点のSpan shapeに依存する
+近似だった。
+
+## E012：同じ100 Spanを50件ずつに分けて全件を戻す
+
+次は失ったdataを変えず、object partitionだけを変えた。総Span数100、payload、
+preset、実background callback、15秒schedule、SIGKILL、再起動手順を固定し、
+`maxExportBatchSize`だけ100から50へ下げた。
+
+| Persistence | Payload / span | E011 batch 100 | E012 batch 50 | E012 file |
+|---|---:|---:|---:|---:|
+| Default | 1,536B | 0/100 | 100/100 | 264,897 bytes |
+| Default | 2,048B | — | 100/100 | 316,057 bytes |
+| Instant | 1,536B | 0/100 | 100/100 | 264,891 bytes |
+| Instant | 2,048B | 0/100 | 100/100 | 316,107 bytes |
+
+![E011で同じ100 Spanがpayload増加により全損し、E012でchunkだけ半分にして全件回収した比較図](./assets/e011-e012-payload-boundary.png)
+
+4条件すべて100/100、重複0だった。1,536Bでは183,618-byte、2,048Bでは
+234,818-byteのrequestを、再起動後に各1回送った。fileが256 KiBより大きいのは
+矛盾ではない。上限未満の50件objectを2個、別の4 MiB上限を持つ1 fileへappend
+したからである。resume時には2 objectが1 requestへflattenされた。
+
+これで同じ論理dataが、byte境界を越えて100/100→0/100、partitionだけを変えて
+0/100→100/100となった。ただし50も普遍的な安全値ではない。1 Spanだけで上限を
+越える場合は分割不能なので、次はその最小反例を測る必要がある。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
@@ -441,6 +489,11 @@ lifecycle windowで耐久境界を越える、という介入にできた。
 分かった。E010ではcount-based chunkを100へ下げ、両presetで500件の0/500を
 500/500へ、1,000件の232/1,000を1,000/1,000へ戻した。
 
+E011はその100件という暫定値をattribute増加だけで再び0/100へ壊した。E012では
+同じpayloadを50件objectへ分け、両presetを100/100へ戻した。不可能に見えた全損を
+回復したのは「小さい数字」そのものではなく、失敗単位だったencoded objectを
+byte上限内へ収める介入である。
+
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
 正しくretryしても、組み合わせ全体が望むsemanticsになるとは限らない。
@@ -455,14 +508,15 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
 - `scenePhase.background`でbatch queueをflushする（Simulatorでmechanism proof済み）。
 - `maxExportBatchSize`をencoded objectのbyte上限から安全側へ決める
-  （このpayloadでは100でmechanism proof済み）。
+  （既知payloadへの緊急緩和。E011で普遍性なしと確認）。
+- encoded byteで事前分割し、単一Span oversizeは明示的に拒否・削減・通知する。
 - oversizeを握りつぶさず、metric・log・export failureとして可視化する。
 - batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次はattribute sizeを増やして100件chunkの限界を測り、その後にbackground flush時間と
-UI応答性のトレードオフを測る必要がある。
+次はbatch 1でも保存できない単一Spanを確認し、その後にbyte-aware policyと
+background flush時間・UI応答性のトレードオフを測る必要がある。
 
 ## 試行錯誤も証跡に残す
 
@@ -479,7 +533,7 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
 - iPhone 17 Simulator / iOS 26.4.1。
 - `opentelemetry-swift` 2.5.0、core 2.5.1。
 - `otelcol` 0.157.0。
-- loopbackの接続拒否、OTLP/HTTP protobuf、100〜1,000 Span。
+- loopbackの接続拒否、OTLP/HTTP protobuf、100〜1,000 Span、追加payload 0〜2,048B。
 - 各停止時間は1 run。ただし8秒3倍は非計測E002でも独立再現した。
 - 再起動試験は`simctl terminate`による制御された終了であり、ファイル観測後に
   実行した。
@@ -494,7 +548,7 @@ SDK全バージョン、実端末、すべてのネットワーク障害へ一�
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
 - byte-aware splitとoversize error可視化をSDK外から実装できるか。
-- 大きなattributeで`maxExportBatchSize=100`の安全境界がどこまで動くか。
+- batch 1でも256 KiBを超える単一Spanは、どの失敗信号を残すか。
 - lifecycle flush中のmain-thread応答性とenergy costは何か。
 - 実端末でbackground flushがsuspension前に完了するか。途中で止めると何件残るか。
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
@@ -533,6 +587,11 @@ forceFlush完了後でも500件は0、1,000件は末尾232件だけになった�
 E010で`maxExportBatchSize`だけを100へ下げると、両presetとも500件・1,000件を
 全件回収した。5個・10個の小さいstorage objectは1 fileへまとまり、送信は1 requestの
 ままだった。失敗した単位と同じ場所へ介入すると、0件を全件へ戻せた。
+
+しかしE011で1 Spanのattributeを1,024Bから1,536Bへ増やすと、同じbatch 100が
+両presetで100/100から0/100へ戻った。E012ではdataを変えず50件ずつへ分割し、
+1,536Bと2,048Bの4条件をすべて100/100へ回復した。安全性をSpan件数だけで表す
+ことはできず、永続化が受け取るencoded byteを制御する必要がある。
 
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
