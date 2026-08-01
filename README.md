@@ -87,6 +87,9 @@ for the pinned Swift SDK:
 - E017 pre-runtime: additive JSON sizing matched exact binary partitions across
   200 deterministic heterogeneous cases and reduced synthetic encoded-output
   work by 73.5%; the registered Simulator matrix remains pending.
+- E018 pre-runtime: the same ten primary and ten secondary synthetic payloads
+  required 10 objects when alternating but 15 when grouped; runtime remains
+  pending.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -114,6 +117,8 @@ The direct main-queue probe is summarized in
 [`experiments/E016-main-queue-flush-stall/results.md`](experiments/E016-main-queue-flush-stall/results.md).
 The guarded additive JSON optimization and its runtime limits are summarized in
 [`experiments/E017-additive-json-partition/results.md`](experiments/E017-additive-json-partition/results.md).
+The payload-order fragmentation model is summarized in
+[`experiments/E018-payload-order-fragmentation/results.md`](experiments/E018-payload-order-fragmentation/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -141,9 +146,12 @@ scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
   [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> \
   [<sdkNative-or-encodedByteBudget> [<object-byte-budget> \
   [<linearPrefixEncoding-or-binarySearchEncoding-or-incrementalJSONElementEncoding> \
-  [<disabled-or-enabled-main-queue-probe>]]]]]]]]
+  [<disabled-or-enabled-main-queue-probe> [<secondary-payload-bytes> \
+  [<constant-or-alternatingPrimarySecondary-or-groupedPrimaryFirst-or-groupedSecondaryFirst>]]]]]]]]]]
 scripts/summarize-main-queue-probes.sh evidence/raw/<run-id> [...]
 scripts/run-partition-cost.sh <element-count> <payload-bytes> <byte-budget>
+scripts/run-payload-order-cost.sh <count> <primary-bytes> <secondary-bytes> \
+  <byte-budget> <payload-pattern>
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -172,3 +180,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E015 | Can exact byte partitioning fit a mobile background budget? | Complete: binary search preserved delivery and cut matched flushes by 85–93% to 135–540 ms |
 | E016 | Does synchronous background flush stall the main queue? | Complete: queued work resumed after 297–1,271 ms; flush duration omitted another 224–303 ms; delivery remained 500/500 |
 | E017 | Can one encode per JSON element preserve exact byte boundaries with less work? | Pre-runtime complete: 200 heterogeneous cases matched; synthetic encoded output fell 73.5%; Simulator matrix pending |
+| E018 | Can payload order fragment byte-bounded persistence objects? | Pre-runtime complete: the same mixed multiset used 10 alternating or 15 grouped objects; Simulator matrix pending |
