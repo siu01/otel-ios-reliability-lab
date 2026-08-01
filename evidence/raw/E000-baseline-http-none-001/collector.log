@@ -1,0 +1,26 @@
+2026-08-01T20:42:45.672+0900	error	service@v0.157.0/service.go:183	error found during service initialization	{"resource": {"service.instance.id": "a7e1764c-1ed2-4814-8e8b-d9f1bb25424c", "service.name": "otelcol", "service.version": "0.157.0"}, "error": "failed to create meter provider: binding address localhost:8888 for Prometheus exporter: listen tcp 127.0.0.1:8888: bind: operation not permitted"}
+go.opentelemetry.io/collector/service.New.func2
+	go.opentelemetry.io/collector/service@v0.157.0/service.go:183
+go.opentelemetry.io/collector/service.New
+	go.opentelemetry.io/collector/service@v0.157.0/service.go:250
+go.opentelemetry.io/collector/otelcol.(*Collector).setupConfigurationComponents
+	go.opentelemetry.io/collector/otelcol@v0.157.0/collector.go:232
+go.opentelemetry.io/collector/otelcol.(*Collector).Run
+	go.opentelemetry.io/collector/otelcol@v0.157.0/collector.go:431
+go.opentelemetry.io/collector/otelcol.NewCommand.func1
+	go.opentelemetry.io/collector/otelcol@v0.157.0/command.go:41
+github.com/spf13/cobra.(*Command).execute
+	github.com/spf13/cobra@v1.10.2/command.go:1015
+github.com/spf13/cobra.(*Command).ExecuteC
+	github.com/spf13/cobra@v1.10.2/command.go:1148
+github.com/spf13/cobra.(*Command).Execute
+	github.com/spf13/cobra@v1.10.2/command.go:1071
+main.runInteractive
+	github.com/open-telemetry/opentelemetry-collector-releases/core/main.go:60
+main.run
+	github.com/open-telemetry/opentelemetry-collector-releases/core/main_others.go:10
+main.main
+	github.com/open-telemetry/opentelemetry-collector-releases/core/main.go:51
+runtime.main
+	runtime/proc.go:290
+Error: failed to create meter provider: binding address localhost:8888 for Prometheus exporter: listen tcp 127.0.0.1:8888: bind: operation not permitted
