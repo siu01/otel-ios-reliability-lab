@@ -13,12 +13,32 @@ struct RunDescriptorTests {
             plannedSpanCount: 1_000,
             startedAt: Date(timeIntervalSince1970: 1_785_582_400),
             transport: .http,
-            persistence: .officialInstant
+            persistence: .officialInstant,
+            flushMode: .disabled
         )
 
         let encoded = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(RunDescriptor.self, from: encoded)
 
         #expect(decoded == original)
+    }
+
+    @Test("decodes pre-flush-dimension evidence as explicit flush")
+    func decodesLegacyEvidence() throws {
+        let experimentID = try #require(ExperimentID(rawValue: "E001"))
+        let descriptor = RunDescriptor(
+            experimentID: experimentID,
+            plannedSpanCount: 100,
+            transport: .http,
+            persistence: .officialDefault
+        )
+        let encoded = try JSONEncoder().encode(descriptor)
+        var object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "flushMode")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(RunDescriptor.self, from: legacyData)
+
+        #expect(decoded.flushMode == .explicit)
     }
 }
