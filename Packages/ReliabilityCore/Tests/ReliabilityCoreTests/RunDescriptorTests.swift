@@ -15,6 +15,8 @@ struct RunDescriptorTests {
             transport: .http,
             persistence: .officialInstant,
             flushMode: .durabilityBarrier,
+            flushTrigger: .background,
+            processorScheduleDelayMilliseconds: 5_000,
             httpClientMode: .instrumentedBase,
             exporterMode: .statelessHTTP
         )
@@ -37,6 +39,8 @@ struct RunDescriptorTests {
         let encoded = try JSONEncoder().encode(descriptor)
         var object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         object.removeValue(forKey: "flushMode")
+        object.removeValue(forKey: "flushTrigger")
+        object.removeValue(forKey: "processorScheduleDelayMilliseconds")
         object.removeValue(forKey: "httpClientMode")
         object.removeValue(forKey: "exporterMode")
         let legacyData = try JSONSerialization.data(withJSONObject: object)
@@ -44,6 +48,8 @@ struct RunDescriptorTests {
         let decoded = try JSONDecoder().decode(RunDescriptor.self, from: legacyData)
 
         #expect(decoded.flushMode == .explicit)
+        #expect(decoded.flushTrigger == .afterBurst)
+        #expect(decoded.processorScheduleDelayMilliseconds == 250)
         #expect(decoded.httpClientMode == .officialBase)
         #expect(decoded.exporterMode == .officialStateful)
     }

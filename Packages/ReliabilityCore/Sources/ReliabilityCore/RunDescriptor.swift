@@ -8,6 +8,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let transport: Transport
     public let persistence: PersistenceMode
     public let flushMode: FlushMode
+    public let flushTrigger: FlushTrigger
+    public let processorScheduleDelayMilliseconds: Int
     public let httpClientMode: HTTPClientMode
     public let exporterMode: ExporterMode
 
@@ -19,10 +21,16 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         transport: Transport,
         persistence: PersistenceMode,
         flushMode: FlushMode = .explicit,
+        flushTrigger: FlushTrigger = .afterBurst,
+        processorScheduleDelayMilliseconds: Int = 250,
         httpClientMode: HTTPClientMode = .officialBase,
         exporterMode: ExporterMode = .officialStateful
     ) {
         precondition(plannedSpanCount > 0, "A run must plan at least one span")
+        precondition(
+            processorScheduleDelayMilliseconds > 0,
+            "A processor schedule delay must be positive"
+        )
         self.experimentID = experimentID
         self.runID = runID
         self.plannedSpanCount = plannedSpanCount
@@ -30,6 +38,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.transport = transport
         self.persistence = persistence
         self.flushMode = flushMode
+        self.flushTrigger = flushTrigger
+        self.processorScheduleDelayMilliseconds = processorScheduleDelayMilliseconds
         self.httpClientMode = httpClientMode
         self.exporterMode = exporterMode
     }
@@ -42,6 +52,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case transport
         case persistence
         case flushMode
+        case flushTrigger
+        case processorScheduleDelayMilliseconds
         case httpClientMode
         case exporterMode
     }
@@ -55,6 +67,22 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         transport = try container.decode(Transport.self, forKey: .transport)
         persistence = try container.decode(PersistenceMode.self, forKey: .persistence)
         flushMode = try container.decodeIfPresent(FlushMode.self, forKey: .flushMode) ?? .explicit
+        flushTrigger = try container.decodeIfPresent(
+            FlushTrigger.self,
+            forKey: .flushTrigger
+        ) ?? .afterBurst
+        let decodedScheduleDelay = try container.decodeIfPresent(
+            Int.self,
+            forKey: .processorScheduleDelayMilliseconds
+        ) ?? 250
+        guard decodedScheduleDelay > 0 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .processorScheduleDelayMilliseconds,
+                in: container,
+                debugDescription: "Processor schedule delay must be positive"
+            )
+        }
+        processorScheduleDelayMilliseconds = decodedScheduleDelay
         httpClientMode = try container.decodeIfPresent(
             HTTPClientMode.self,
             forKey: .httpClientMode
@@ -74,6 +102,11 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         try container.encode(transport, forKey: .transport)
         try container.encode(persistence, forKey: .persistence)
         try container.encode(flushMode, forKey: .flushMode)
+        try container.encode(flushTrigger, forKey: .flushTrigger)
+        try container.encode(
+            processorScheduleDelayMilliseconds,
+            forKey: .processorScheduleDelayMilliseconds
+        )
         try container.encode(httpClientMode, forKey: .httpClientMode)
         try container.encode(exporterMode, forKey: .exporterMode)
     }
@@ -94,6 +127,11 @@ public enum FlushMode: String, Codable, CaseIterable, Sendable {
     case disabled
     case explicit
     case durabilityBarrier
+}
+
+public enum FlushTrigger: String, Codable, CaseIterable, Sendable {
+    case afterBurst
+    case background
 }
 
 public enum HTTPClientMode: String, Codable, CaseIterable, Sendable {

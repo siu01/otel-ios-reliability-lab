@@ -15,6 +15,8 @@ struct AutomationLaunchConfigurationTests {
             "--lab-transport=http",
             "--lab-persistence=officialInstant",
             "--lab-flush=explicit",
+            "--lab-flush-trigger=background",
+            "--lab-schedule-delay-ms=5000",
             "--lab-http-client=instrumentedBase",
             "--lab-exporter=statelessHTTP",
         ])
@@ -27,6 +29,8 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.transport == .http)
         #expect(config.persistence == .officialInstant)
         #expect(config.flushMode == .explicit)
+        #expect(config.flushTrigger == .background)
+        #expect(config.processorScheduleDelayMilliseconds == 5_000)
         #expect(config.httpClientMode == .instrumentedBase)
         #expect(config.exporterMode == .statelessHTTP)
     }
@@ -40,6 +44,8 @@ struct AutomationLaunchConfigurationTests {
             "--lab-transport=udp",
             "--lab-persistence=yes",
             "--lab-flush=maybe",
+            "--lab-flush-trigger=whenever",
+            "--lab-schedule-delay-ms=0",
             "--lab-http-client=magic",
             "--lab-exporter=rememberEverything",
         ])
@@ -51,6 +57,8 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.transport == nil)
         #expect(config.persistence == nil)
         #expect(config.flushMode == nil)
+        #expect(config.flushTrigger == nil)
+        #expect(config.processorScheduleDelayMilliseconds == nil)
         #expect(config.httpClientMode == nil)
         #expect(config.exporterMode == nil)
     }
