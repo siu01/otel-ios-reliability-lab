@@ -97,6 +97,8 @@ for the pinned Swift SDK:
   unlisted files across a mutation harness; all 75 raw-run inventories and
   1,142 files verify, while coordinated data-plus-digest rewrite remains a
   documented trust-root limit.
+- E021: the claim index validates 17 runtime-complete, two runtime-pending, and
+  two model-complete experiments without missing paths or state promotion.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -130,6 +132,8 @@ The upstream export-call packing limit is summarized in
 [`experiments/E019-processor-boundary-fragmentation/results.md`](experiments/E019-processor-boundary-fragmentation/results.md).
 The raw-evidence integrity and trust-root audit is summarized in
 [`experiments/E020-evidence-integrity/results.md`](experiments/E020-evidence-integrity/results.md).
+The publication claim-provenance audit is summarized in
+[`experiments/E021-claim-provenance/results.md`](experiments/E021-claim-provenance/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -168,6 +172,7 @@ scripts/run-processor-boundary-cost.sh <count> <payload-bytes> \
 scripts/verify-evidence-run.sh evidence/raw/<run-id>
 scripts/verify-all-evidence.sh
 scripts/test-evidence-verifier.sh
+scripts/audit-claim-index.sh
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -199,3 +204,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E018 | Can payload order fragment byte-bounded persistence objects? | Pre-runtime complete: the same mixed multiset used 10 alternating or 15 grouped objects; Simulator matrix pending |
 | E019 | Can the byte policy pack across processor export calls? | Complete model: no; batch 500/256/100/50 produced 3/3/5/10 objects, including one failed preregistered prediction |
 | E020 | Can manifests detect raw-evidence corruption? | Complete: isolated mutations failed, coordinated rewrite passed as expected, and 75 runs / 1,142 files verify |
+| E021 | Are runtime, model, and pending claims traceable without state confusion? | Complete: 21 consecutive claims, 75 runtime runs, and 1,142 files audit cleanly |
