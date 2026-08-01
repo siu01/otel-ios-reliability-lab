@@ -93,6 +93,10 @@ for the pinned Swift SDK:
 - E019 model: upstream batch 500/256/100/50 yielded 3/3/5/10 byte-bounded
   objects for the same 500 synthetic elements; the registered batch-256
   four-object prediction failed because its second call fit in one object.
+- E020: manifest verification detected isolated truncation, deletion, and
+  unlisted files across a mutation harness; all 75 raw-run inventories and
+  1,142 files verify, while coordinated data-plus-digest rewrite remains a
+  documented trust-root limit.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -124,6 +128,8 @@ The payload-order fragmentation model is summarized in
 [`experiments/E018-payload-order-fragmentation/results.md`](experiments/E018-payload-order-fragmentation/results.md).
 The upstream export-call packing limit is summarized in
 [`experiments/E019-processor-boundary-fragmentation/results.md`](experiments/E019-processor-boundary-fragmentation/results.md).
+The raw-evidence integrity and trust-root audit is summarized in
+[`experiments/E020-evidence-integrity/results.md`](experiments/E020-evidence-integrity/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -159,6 +165,9 @@ scripts/run-payload-order-cost.sh <count> <primary-bytes> <secondary-bytes> \
   <byte-budget> <payload-pattern>
 scripts/run-processor-boundary-cost.sh <count> <payload-bytes> \
   <byte-budget> <processor-batch-size>
+scripts/verify-evidence-run.sh evidence/raw/<run-id>
+scripts/verify-all-evidence.sh
+scripts/test-evidence-verifier.sh
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -189,3 +198,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E017 | Can one encode per JSON element preserve exact byte boundaries with less work? | Pre-runtime complete: 200 heterogeneous cases matched; synthetic encoded output fell 73.5%; Simulator matrix pending |
 | E018 | Can payload order fragment byte-bounded persistence objects? | Pre-runtime complete: the same mixed multiset used 10 alternating or 15 grouped objects; Simulator matrix pending |
 | E019 | Can the byte policy pack across processor export calls? | Complete model: no; batch 500/256/100/50 produced 3/3/5/10 objects, including one failed preregistered prediction |
+| E020 | Can manifests detect raw-evidence corruption? | Complete: isolated mutations failed, coordinated rewrite passed as expected, and 75 runs / 1,142 files verify |
