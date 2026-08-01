@@ -1,0 +1,7 @@
+metric	value
+registered_ledger_offset_ms	0
+stop_mechanism	direct_sigkill
+first_process_pid	45911
+generated_records_before_termination	100
+persistence_visible_before_request	false
+persistence_files_after_termination	0
