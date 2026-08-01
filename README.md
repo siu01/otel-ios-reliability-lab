@@ -81,6 +81,9 @@ for the pinned Swift SDK:
   local oversize rejection; its linear search took up to 7.04 seconds.
 - E015: exact binary search preserved those byte partitions and deliveries while
   cutting matched flush duration by 85–93% to 135–540 ms.
+- E016: the synchronous background callback delayed an already-enqueued
+  main-queue probe for 297–1,271 ms. Provider flush timing understated that
+  delay by 224–303 ms; all four conditions still recovered 500/500 exactly.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -104,6 +107,8 @@ The byte-aware policy is summarized in
 [`experiments/E014-byte-aware-policy/results.md`](experiments/E014-byte-aware-policy/results.md),
 and its search-cost intervention in
 [`experiments/E015-byte-policy-search-cost/results.md`](experiments/E015-byte-policy-search-cost/results.md).
+The direct main-queue probe is summarized in
+[`experiments/E016-main-queue-flush-stall/results.md`](experiments/E016-main-queue-flush-stall/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -130,7 +135,9 @@ scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
   [<experiment-id> <span-count> \
   [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> \
   [<sdkNative-or-encodedByteBudget> [<object-byte-budget> \
-  [<linearPrefixEncoding-or-binarySearchEncoding>]]]]]]]
+  [<linearPrefixEncoding-or-binarySearchEncoding> \
+  [<disabled-or-enabled-main-queue-probe>]]]]]]]]
+scripts/summarize-main-queue-probes.sh evidence/raw/<run-id> [...]
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -157,3 +164,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E013 | Can count tuning save one individually oversized span? | Complete: batch 1 recovered 240 KiB but silently lost 256 and 300 KiB |
 | E014 | Can a byte-aware policy recover batches and surface indivisible loss? | Complete: 100/500-span losses recovered exactly; single oversize recorded explicitly; linear search cost up to 7.04 s |
 | E015 | Can exact byte partitioning fit a mobile background budget? | Complete: binary search preserved delivery and cut matched flushes by 85–93% to 135–540 ms |
+| E016 | Does synchronous background flush stall the main queue? | Complete: queued work resumed after 297–1,271 ms; flush duration omitted another 224–303 ms; delivery remained 500/500 |
