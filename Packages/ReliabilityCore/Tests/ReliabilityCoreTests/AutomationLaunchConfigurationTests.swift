@@ -14,6 +14,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-span-count=250",
             "--lab-transport=http",
             "--lab-persistence=officialInstant",
+            "--lab-flush=explicit",
         ])
 
         #expect(config.shouldAutorun)
@@ -22,6 +23,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.spanCount == 250)
         #expect(config.transport == .http)
         #expect(config.persistence == .officialInstant)
+        #expect(config.flushMode == .explicit)
     }
 
     @Test("invalid values do not silently become valid defaults")
@@ -32,6 +34,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-span-count=0",
             "--lab-transport=udp",
             "--lab-persistence=yes",
+            "--lab-flush=maybe",
         ])
 
         #expect(!config.shouldAutorun)
@@ -39,5 +42,6 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.spanCount == nil)
         #expect(config.transport == nil)
         #expect(config.persistence == nil)
+        #expect(config.flushMode == nil)
     }
 }

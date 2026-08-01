@@ -7,6 +7,7 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let spanCount: Int?
     public let transport: Transport?
     public let persistence: PersistenceMode?
+    public let flushMode: FlushMode?
 
     public init(arguments: [String]) {
         shouldAutorun = arguments.contains("--lab-autorun")
@@ -20,6 +21,8 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
             .flatMap(Transport.init(rawValue:))
         persistence = Self.value(for: "--lab-persistence", in: arguments)
             .flatMap(PersistenceMode.init(rawValue:))
+        flushMode = Self.value(for: "--lab-flush", in: arguments)
+            .flatMap(FlushMode.init(rawValue:))
     }
 
     private static func value(for key: String, in arguments: [String]) -> String? {
