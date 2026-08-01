@@ -126,4 +126,16 @@ struct AutomationLaunchConfigurationTests {
 
         #expect(config.mainQueueProbeEnabled == false)
     }
+
+    @Test("parses the additive JSON element strategy")
+    func parsesAdditiveJSONStrategy() {
+        let config = AutomationLaunchConfiguration(arguments: [
+            "OTelReliabilityLab",
+            "--lab-persistence-object-partition-strategy=incrementalJSONElementEncoding",
+        ])
+
+        #expect(
+            config.persistenceObjectPartitionStrategy == .incrementalJSONElementEncoding
+        )
+    }
 }
