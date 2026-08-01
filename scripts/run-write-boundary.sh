@@ -50,12 +50,13 @@ http_attempts_path="$run_dir/http-attempts.jsonl"
 collector_binary="$repo_dir/collector/bin/otelcol"
 collector_pid=""
 offset_seconds="$(awk -v milliseconds="$ledger_offset_ms" 'BEGIN { printf "%.3f", milliseconds / 1000 }')"
+timestamp_source="$repo_dir/tools/utc-now.c"
+timestamp_binary="$tmp_root/OTelReliabilityLabUtcNow"
 
 export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
 
 utc_now() {
-  perl -MTime::HiRes=time -MPOSIX=strftime -e \
-    '$t=time; print strftime("%Y-%m-%dT%H:%M:%S", gmtime($t)), sprintf(".%03dZ", ($t-int($t))*1000)'
+  "$timestamp_binary"
 }
 
 record_timing() {
@@ -107,6 +108,9 @@ if [[ ! -d "$app_path" ]]; then
   echo "app build is missing; run scripts/build-simulator.sh" >&2
   exit 1
 fi
+if [[ ! -x "$timestamp_binary" || "$timestamp_source" -nt "$timestamp_binary" ]]; then
+  clang -std=c11 -Wall -Wextra -Werror "$timestamp_source" -o "$timestamp_binary"
+fi
 if curl --silent --fail http://127.0.0.1:13133/ >/dev/null 2>&1; then
   echo "collector is already running; E006 requires it to be unavailable initially" >&2
   exit 1
@@ -116,6 +120,7 @@ mkdir -p "$run_dir"
 printf 'event\tutc_timestamp\n' > "$timing_log"
 printf 'metric\tvalue\n' > "$boundary_log"
 printf 'registered_ledger_offset_ms\t%s\n' "$ledger_offset_ms" >> "$boundary_log"
+printf 'stop_mechanism\tdirect_sigkill\n' >> "$boundary_log"
 printf 'artifact\tsha256\n' > "$digest_log"
 
 set +e
@@ -144,6 +149,13 @@ xcrun simctl launch \
   --lab-exporter=statelessHTTP > "$first_launch_log"
 record_timing first_launch_returned
 
+app_pid="$(awk -F': ' 'NF == 2 { print $2 }' "$first_launch_log" | tail -1)"
+if [[ ! "$app_pid" =~ ^[0-9]+$ ]] || ! kill -0 "$app_pid" 2>/dev/null; then
+  echo "could not resolve a live Simulator app PID from first launch" >&2
+  exit 1
+fi
+printf 'first_process_pid\t%s\n' "$app_pid" >> "$boundary_log"
+
 generated_ledger_ready=false
 for _ in {1..4000}; do
   if [[ -s "$app_run_dir/generated.jsonl" && -s "$app_run_dir/run.json" ]]; then
@@ -166,17 +178,15 @@ printf 'generated_records_before_termination\t100\n' >> "$boundary_log"
 if [[ "$ledger_offset_ms" != "0" ]]; then
   sleep "$offset_seconds"
 fi
-record_timing registered_offset_elapsed
 
 persistence_visible_before_request=false
 if [[ -d "$persistence_dir" ]] && [[ -n "$(find "$persistence_dir" -type f -print -quit)" ]]; then
   persistence_visible_before_request=true
 fi
 printf 'persistence_visible_before_request\t%s\n' "$persistence_visible_before_request" >> "$boundary_log"
-record_timing persistence_visibility_checked
 
 record_timing termination_requested
-xcrun simctl terminate "$simulator_udid" "$bundle_id"
+kill -KILL "$app_pid"
 record_timing first_process_terminated
 
 snapshot_persistence "$persistence_dir" "$after_termination_snapshot"
