@@ -666,6 +666,18 @@ E010で`maxExportBatchSize`だけを100へ下げると、両presetとも500件�
 1,536Bと2,048Bの4条件をすべて100/100へ回復した。安全性をSpan件数だけで表す
 ことはできず、永続化が受け取るencoded byteを制御する必要がある。
 
+E013はその件数調整の絶対的な限界を示した。batch 1でも、256 KiB payloadの
+単一SpanはfileもHTTP attemptも残さず0/1になった。そこでE014では保存前の
+encoded byteを測るwrapperを置き、既知の100件・500件全損をすべて回収した。
+分割不能な単一Spanは回収できないが、silent lossではなくencoded sizeつきの
+明示rejectionになった。
+
+ただし最初のlinear探索は500件で4.5〜7.0秒を要した。E015のbinary searchは、
+同じobject partition、同じsequence集合、重複0を維持したまま135〜540msへ短縮した。
+データ生存率を上げる介入は、lifecycle中に実行できる計算量まで含めて設計する必要が
+ある。次はflush時間を代理指標にせず、main queueの停止時間そのものを測る。
+
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
-渡るか、1 objectが内部byte上限へ収まるかまで測る必要がある。
+渡るか、1 objectが内部byte上限へ収まるか、境界計算がlifecycle budgetへ収まるか
+まで測る必要がある。
