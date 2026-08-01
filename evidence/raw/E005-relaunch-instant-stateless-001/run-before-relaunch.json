@@ -1,0 +1,11 @@
+{
+  "experimentID" : "E005",
+  "exporterMode" : "statelessHTTP",
+  "flushMode" : "disabled",
+  "httpClientMode" : "instrumentedBase",
+  "persistence" : "officialInstant",
+  "plannedSpanCount" : 100,
+  "runID" : "00000000-0000-0000-0005-000000000001",
+  "startedAt" : "2026-08-01T13:07:59Z",
+  "transport" : "http"
+}

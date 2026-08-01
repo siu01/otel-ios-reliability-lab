@@ -1,0 +1,10 @@
+event	utc_timestamp
+first_launch_requested	2026-08-01T13:07:57Z
+first_launch_returned	2026-08-01T13:07:58Z
+persistence_file_observed	2026-08-01T13:07:59Z
+first_process_terminated	2026-08-01T13:08:00Z
+collector_start_requested	2026-08-01T13:08:00Z
+collector_ready	2026-08-01T13:08:00Z
+resume_launch_requested	2026-08-01T13:08:00Z
+resume_launch_returned	2026-08-01T13:08:01Z
+capture_window_complete	2026-08-01T13:08:31Z
