@@ -1,0 +1,6 @@
+event	utc_timestamp
+app_launch_requested	2026-08-01T12:19:12Z
+app_launch_returned	2026-08-01T12:19:13Z
+collector_start_requested	2026-08-01T12:19:21Z
+collector_ready	2026-08-01T12:19:22Z
+capture_window_complete	2026-08-01T12:19:52Z
