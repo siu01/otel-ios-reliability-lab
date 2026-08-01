@@ -1,0 +1,5 @@
+{"flushMode":"explicit","phase":"generatedLedgerCommitted","timestampUnixNanoseconds":1785596685201807104}
+{"flushMode":"explicit","phase":"burstCompleted","timestampUnixNanoseconds":1785596685203328256}
+{"flushMode":"explicit","phase":"backgroundObserved","timestampUnixNanoseconds":1785596687073377024}
+{"flushMode":"explicit","phase":"flushStarted","timestampUnixNanoseconds":1785596687073840128}
+{"durationNanoseconds":48170084,"flushMode":"explicit","phase":"flushCompleted","timestampUnixNanoseconds":1785596687122232064}
