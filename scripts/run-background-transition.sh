@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 && $# -ne 8 ]]; then
-  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size>]]]" >&2
+if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 && $# -ne 8 && $# -ne 9 ]]; then
+  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes>]]]]" >&2
   exit 64
 fi
 
@@ -14,6 +14,7 @@ experiment_id="${5:-E008}"
 span_count="${6:-100}"
 schedule_delay_milliseconds="${7:-5000}"
 max_export_batch_size="${8:-256}"
+payload_attribute_bytes="${9:-0}"
 
 if [[ ! "$evidence_run_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "invalid evidence run ID" >&2
@@ -52,6 +53,10 @@ if [[ ! "$schedule_delay_milliseconds" =~ ^[1-9][0-9]*$ ]] \
 fi
 if [[ ! "$max_export_batch_size" =~ ^[1-9][0-9]*$ ]] || (( max_export_batch_size > 512 )); then
   echo "maximum export batch size must be an integer from 1 through 512" >&2
+  exit 64
+fi
+if [[ ! "$payload_attribute_bytes" =~ ^[0-9]+$ ]] || (( payload_attribute_bytes > 65536 )); then
+  echo "payload attribute bytes must be an integer from 0 through 65536" >&2
   exit 64
 fi
 
@@ -150,6 +155,7 @@ printf 'planned_span_count\t%s\n' "$span_count" >> "$boundary_log"
 printf 'flush_trigger\tbackground\n' >> "$boundary_log"
 printf 'processor_schedule_delay_milliseconds\t%s\n' "$schedule_delay_milliseconds" >> "$boundary_log"
 printf 'max_export_batch_size\t%s\n' "$max_export_batch_size" >> "$boundary_log"
+printf 'payload_attribute_bytes\t%s\n' "$payload_attribute_bytes" >> "$boundary_log"
 printf 'background_app\t%s\n' "$background_bundle_id" >> "$boundary_log"
 printf 'stop_mechanism\tdirect_sigkill\n' >> "$boundary_log"
 printf 'artifact\tsha256\n' > "$digest_log"
@@ -181,6 +187,7 @@ xcrun simctl launch \
   --lab-flush-trigger=background \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
   "--lab-max-export-batch-size=$max_export_batch_size" \
+  "--lab-payload-bytes=$payload_attribute_bytes" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$first_launch_log"
 record_timing first_launch_returned
@@ -357,6 +364,7 @@ xcrun simctl launch \
   --lab-flush-trigger=background \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
   "--lab-max-export-batch-size=$max_export_batch_size" \
+  "--lab-payload-bytes=$payload_attribute_bytes" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$resume_launch_log"
 record_timing resume_launch_returned
