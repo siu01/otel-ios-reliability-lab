@@ -10,6 +10,7 @@ final class ExperimentController: ObservableObject {
     @Published var flushTrigger: FlushTrigger = .afterBurst
     @Published var processorScheduleDelayMilliseconds = 250
     @Published var maxExportBatchSize = 256
+    @Published var payloadAttributeBytes = 0
     @Published var httpClientMode: HTTPClientMode = .officialBase
     @Published var exporterMode: ExporterMode = .officialStateful
     @Published var plannedSpanCount = 100
@@ -54,6 +55,9 @@ final class ExperimentController: ObservableObject {
         }
         if let maxExportBatchSize = launchConfiguration.maxExportBatchSize {
             self.maxExportBatchSize = maxExportBatchSize
+        }
+        if let payloadAttributeBytes = launchConfiguration.payloadAttributeBytes {
+            self.payloadAttributeBytes = payloadAttributeBytes
         }
         if let httpClientMode = launchConfiguration.httpClientMode {
             self.httpClientMode = httpClientMode
@@ -100,6 +104,7 @@ final class ExperimentController: ObservableObject {
                     flushTrigger: flushTrigger,
                     processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     maxExportBatchSize: maxExportBatchSize,
+                    payloadAttributeBytes: payloadAttributeBytes,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
@@ -133,6 +138,7 @@ final class ExperimentController: ObservableObject {
                     flushTrigger: flushTrigger,
                     processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     maxExportBatchSize: maxExportBatchSize,
+                    payloadAttributeBytes: payloadAttributeBytes,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )

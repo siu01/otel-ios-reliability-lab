@@ -113,6 +113,15 @@ struct ContentView: View {
                             .font(.body.monospacedDigit().weight(.semibold))
                     }
                 }
+
+                Stepper(value: $controller.payloadAttributeBytes, in: 0...4_096, step: 256) {
+                    HStack {
+                        Text("Payload attribute")
+                        Spacer()
+                        Text("\(controller.payloadAttributeBytes.formatted()) B")
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                }
             }
         }
     }
