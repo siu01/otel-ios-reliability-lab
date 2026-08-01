@@ -11,11 +11,16 @@ let package = Package(
     products: [
         .library(name: "ReliabilityCore", targets: ["ReliabilityCore"]),
         .executable(name: "reliability-reconcile", targets: ["ReliabilityCLI"]),
+        .executable(name: "reliability-partition-cost", targets: ["PartitionCostCLI"]),
     ],
     targets: [
         .target(name: "ReliabilityCore"),
         .executableTarget(
             name: "ReliabilityCLI",
+            dependencies: ["ReliabilityCore"]
+        ),
+        .executableTarget(
+            name: "PartitionCostCLI",
             dependencies: ["ReliabilityCore"]
         ),
         .testTarget(
