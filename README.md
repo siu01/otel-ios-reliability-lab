@@ -51,6 +51,9 @@ The current result is a retry-composition warning for the pinned Swift SDK:
 - E004: a stateless exporter beneath official persistence kept every retry at
   the 100-span body size and recovered 100/100 with no duplicates after one and
   two completed failures.
+- E005: after a persisted file was observed and the app process terminated,
+  both instant and default presets recovered 100/100 exactly once from a new
+  process without regenerating spans.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -71,6 +74,8 @@ scripts/reconcile-run.sh evidence/raw/<run-id>
 scripts/run-late-collector.sh E003 <evidence-run-id> <span-run-uuid> \
   officialInstant disabled instrumentedBase <collector-delay-seconds> \
   <officialStateful-or-statelessHTTP>
+scripts/run-process-relaunch.sh <evidence-run-id> <span-run-uuid> \
+  <officialInstant-or-officialDefault>
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -86,4 +91,5 @@ their sources of truth are `project.yml` and the pinned installer.
 | E002 | Is explicit force flush required for instant-preset duplication? | Complete: no; 3x delivery occurred without it |
 | E003 | Do HTTP attempts reveal retry amplification? | Complete: 1x/2x/3x matched 0/1/2 completed failures |
 | E004 | Can single-owner retry stop amplification without reintroducing loss? | Complete: 100/100 exactly once after one and two failures |
-| E005 | What survives process termination and relaunch? | Next |
+| E005 | What survives process termination and relaunch? | Complete: both presets recovered 100/100 exactly once after controlled termination |
+| E006 | What survives termination during the persistence write boundary? | Next |
