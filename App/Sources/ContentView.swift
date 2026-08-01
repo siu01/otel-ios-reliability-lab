@@ -64,6 +64,12 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
 
+                Picker("HTTP evidence", selection: $controller.httpClientMode) {
+                    Text("Official").tag(HTTPClientMode.officialBase)
+                    Text("Instrumented").tag(HTTPClientMode.instrumentedBase)
+                }
+                .pickerStyle(.segmented)
+
                 Stepper(value: $controller.plannedSpanCount, in: 10...1_000, step: 10) {
                     HStack {
                         Text("Planned spans")

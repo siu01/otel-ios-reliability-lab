@@ -6,6 +6,7 @@ final class ExperimentController: ObservableObject {
     @Published var transport: Transport = .http
     @Published var persistence: PersistenceMode = .disabled
     @Published var flushMode: FlushMode = .explicit
+    @Published var httpClientMode: HTTPClientMode = .officialBase
     @Published var plannedSpanCount = 100
     @Published private(set) var generatedCount = 0
     @Published private(set) var receivedCount = 0
@@ -35,6 +36,9 @@ final class ExperimentController: ObservableObject {
         }
         if let flushMode = launchConfiguration.flushMode {
             self.flushMode = flushMode
+        }
+        if let httpClientMode = launchConfiguration.httpClientMode {
+            self.httpClientMode = httpClientMode
         }
         status = launchConfiguration.shouldAutorun
             ? "Automated baseline queued"
@@ -67,12 +71,16 @@ final class ExperimentController: ObservableObject {
                     plannedSpanCount: plannedSpanCount,
                     transport: transport,
                     persistence: persistence,
-                    flushMode: flushMode
+                    flushMode: flushMode,
+                    httpClientMode: httpClientMode
                 )
                 latestRunID = run.runID
                 isReconciled = false
                 let evidenceStore = try RunEvidenceStore(run: run)
-                try telemetry.configure(for: run)
+                try telemetry.configure(
+                    for: run,
+                    runEvidenceDirectory: evidenceStore.runDirectory
+                )
 
                 status = "Ending \(plannedSpanCount) probe spans"
                 var generated: [GeneratedSpanRecord] = []

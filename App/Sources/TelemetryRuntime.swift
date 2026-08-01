@@ -25,7 +25,7 @@ final class TelemetryRuntime {
     private var provider: TracerProviderSdk?
     private var tracer: (any Tracer)?
 
-    func configure(for run: RunDescriptor) throws {
+    func configure(for run: RunDescriptor, runEvidenceDirectory: URL) throws {
         guard run.transport == .http else {
             throw TelemetryRuntimeError.unsupportedTransport(run.transport)
         }
@@ -33,13 +33,24 @@ final class TelemetryRuntime {
         provider?.shutdown()
 
         let endpoint = URL(string: "http://127.0.0.1:4318/v1/traces")!
+        let httpClient: any HTTPClient
+        switch run.httpClientMode {
+        case .officialBase:
+            httpClient = BaseHTTPClient()
+        case .instrumentedBase:
+            httpClient = try InstrumentedHTTPClient(
+                evidenceURL: runEvidenceDirectory.appendingPathComponent("http-attempts.jsonl")
+            )
+        }
+
         let baseExporter = OtlpHttpTraceExporter(
             endpoint: endpoint,
             config: OtlpConfiguration(
                 timeout: 2,
                 compression: .none,
                 exportAsJson: true
-            )
+            ),
+            httpClient: httpClient
         )
 
         let exporter: any SpanExporter
