@@ -1,0 +1,42 @@
+{
+  "elementCount": 500,
+  "payloadBytesPerElement": 1024,
+  "totalPayloadBytes": 512000,
+  "byteBudget": 262144,
+  "binaryMatchedAdditiveInEveryCall": true,
+  "conditions": [
+    {
+      "processorBatchSize": 500,
+      "exportCallCount": 1,
+      "objectCount": 3,
+      "chunkElementCounts": [248, 248, 4],
+      "encodedObjectBytes": [261286, 261394, 4218],
+      "encodedObjectByteTotal": 526898
+    },
+    {
+      "processorBatchSize": 256,
+      "exportCallCount": 2,
+      "objectCount": 3,
+      "chunkElementCounts": [248, 8, 244],
+      "encodedObjectBytes": [261286, 8434, 257178],
+      "encodedObjectByteTotal": 526898,
+      "note": "the registered four-object hypothesis failed because all 244 elements of call two fit in this synthetic representation"
+    },
+    {
+      "processorBatchSize": 100,
+      "exportCallCount": 5,
+      "objectCount": 5,
+      "chunkElementCounts": [100, 100, 100, 100, 100],
+      "encodedObjectBytes": [105294, 105402, 105402, 105402, 105402],
+      "encodedObjectByteTotal": 526902
+    },
+    {
+      "processorBatchSize": 50,
+      "exportCallCount": 10,
+      "objectCount": 10,
+      "chunkElementCounts": [50, 50, 50, 50, 50, 50, 50, 50, 50, 50],
+      "encodedObjectBytes": [52643, 52653, 52702, 52702, 52702, 52702, 52702, 52702, 52702, 52702],
+      "encodedObjectByteTotal": 526912
+    }
+  ]
+}
