@@ -8,6 +8,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let transport: Transport
     public let persistence: PersistenceMode
     public let flushMode: FlushMode
+    public let httpClientMode: HTTPClientMode
 
     public init(
         experimentID: ExperimentID,
@@ -16,7 +17,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         startedAt: Date = Date(),
         transport: Transport,
         persistence: PersistenceMode,
-        flushMode: FlushMode = .explicit
+        flushMode: FlushMode = .explicit,
+        httpClientMode: HTTPClientMode = .officialBase
     ) {
         precondition(plannedSpanCount > 0, "A run must plan at least one span")
         self.experimentID = experimentID
@@ -26,6 +28,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.transport = transport
         self.persistence = persistence
         self.flushMode = flushMode
+        self.httpClientMode = httpClientMode
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -36,6 +39,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case transport
         case persistence
         case flushMode
+        case httpClientMode
     }
 
     public init(from decoder: any Decoder) throws {
@@ -47,6 +51,10 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         transport = try container.decode(Transport.self, forKey: .transport)
         persistence = try container.decode(PersistenceMode.self, forKey: .persistence)
         flushMode = try container.decodeIfPresent(FlushMode.self, forKey: .flushMode) ?? .explicit
+        httpClientMode = try container.decodeIfPresent(
+            HTTPClientMode.self,
+            forKey: .httpClientMode
+        ) ?? .officialBase
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -58,6 +66,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         try container.encode(transport, forKey: .transport)
         try container.encode(persistence, forKey: .persistence)
         try container.encode(flushMode, forKey: .flushMode)
+        try container.encode(httpClientMode, forKey: .httpClientMode)
     }
 }
 
@@ -75,4 +84,9 @@ public enum PersistenceMode: String, Codable, CaseIterable, Sendable {
 public enum FlushMode: String, Codable, CaseIterable, Sendable {
     case disabled
     case explicit
+}
+
+public enum HTTPClientMode: String, Codable, CaseIterable, Sendable {
+    case officialBase
+    case instrumentedBase
 }
