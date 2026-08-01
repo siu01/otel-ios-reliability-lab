@@ -38,7 +38,8 @@ termination, and relaunch—and what does persistence change?
 The iOS app, native Collector capture, generated ledger, HTTP request lifecycle
 instrumentation, and reconciliation CLI are operational.
 
-The current result is a retry-composition warning for the pinned Swift SDK:
+The current results expose retry-composition and durability-boundary warnings
+for the pinned Swift SDK:
 
 - E000: all connected controls delivered 100/100 exactly once.
 - E001: an eight-second Collector outage delivered 0/100 without persistence,
@@ -54,11 +55,16 @@ The current result is a retry-composition warning for the pinned Swift SDK:
 - E005: after a persisted file was observed and the app process terminated,
   both instant and default presets recovered 100/100 exactly once from a new
   process without regenerating spans.
+- E006: after all 100 `span.end()` calls and the independent ledger completed,
+  abrupt stops at effective host intervals through 181 ms recovered 0/100;
+  300-ms conditions had complete files and recovered 100/100 for both presets.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
 [`experiments/E003-http-attempt-amplification/results.md`](experiments/E003-http-attempt-amplification/results.md)
 for the scoped conclusion and limitations.
+The distinct persistence boundary is summarized in
+[`experiments/E006-write-boundary/results.md`](experiments/E006-write-boundary/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -76,6 +82,8 @@ scripts/run-late-collector.sh E003 <evidence-run-id> <span-run-uuid> \
   <officialStateful-or-statelessHTTP>
 scripts/run-process-relaunch.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault>
+scripts/run-write-boundary.sh <evidence-run-id> <span-run-uuid> \
+  <officialInstant-or-officialDefault> <ledger-offset-ms>
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -92,4 +100,5 @@ their sources of truth are `project.yml` and the pinned installer.
 | E003 | Do HTTP attempts reveal retry amplification? | Complete: 1x/2x/3x matched 0/1/2 completed failures |
 | E004 | Can single-owner retry stop amplification without reintroducing loss? | Complete: 100/100 exactly once after one and two failures |
 | E005 | What survives process termination and relaunch? | Complete: both presets recovered 100/100 exactly once after controlled termination |
-| E006 | What survives termination during the persistence write boundary? | Next |
+| E006 | What survives termination during the persistence write boundary? | Complete: 0/100 before an observable file, 100/100 after it |
+| E007 | Can a lifecycle flush close the upstream durability gap? | Next |
