@@ -1,0 +1,9 @@
+metric	value
+flush_mode	durabilityBarrier
+stop_mechanism	direct_sigkill
+trigger	flush_completed_observed
+first_process_pid	49821
+generated_records_before_termination	100
+flush_duration_nanoseconds	100111625
+persistence_visible_before_request	true
+persistence_files_after_termination	1
