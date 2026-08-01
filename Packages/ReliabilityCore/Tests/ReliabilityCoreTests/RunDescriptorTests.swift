@@ -14,7 +14,7 @@ struct RunDescriptorTests {
             startedAt: Date(timeIntervalSince1970: 1_785_582_400),
             transport: .http,
             persistence: .officialInstant,
-            flushMode: .disabled,
+            flushMode: .durabilityBarrier,
             httpClientMode: .instrumentedBase,
             exporterMode: .statelessHTTP
         )

@@ -74,4 +74,14 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.httpClientMode == .instrumentedBase)
         #expect(config.exporterMode == .statelessHTTP)
     }
+
+    @Test("parses a durability barrier flush")
+    func parsesDurabilityBarrier() {
+        let config = AutomationLaunchConfiguration(arguments: [
+            "OTelReliabilityLab",
+            "--lab-flush=durabilityBarrier",
+        ])
+
+        #expect(config.flushMode == .durabilityBarrier)
+    }
 }

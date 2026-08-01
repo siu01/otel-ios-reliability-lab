@@ -93,6 +93,7 @@ public enum PersistenceMode: String, Codable, CaseIterable, Sendable {
 public enum FlushMode: String, Codable, CaseIterable, Sendable {
     case disabled
     case explicit
+    case durabilityBarrier
 }
 
 public enum HTTPClientMode: String, Codable, CaseIterable, Sendable {
