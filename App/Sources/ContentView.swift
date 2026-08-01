@@ -83,6 +83,26 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
 
+                Picker("Persistence object policy", selection: $controller.persistenceObjectPolicy) {
+                    Text("SDK native").tag(PersistenceObjectPolicy.sdkNative)
+                    Text("Byte budget").tag(PersistenceObjectPolicy.encodedByteBudget)
+                }
+                .pickerStyle(.segmented)
+
+                Stepper(
+                    value: $controller.persistenceObjectByteBudget,
+                    in: 1_024...524_288,
+                    step: 1_024
+                ) {
+                    HStack {
+                        Text("Object byte budget")
+                        Spacer()
+                        Text("\(controller.persistenceObjectByteBudget.formatted()) B")
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                }
+                .disabled(controller.persistenceObjectPolicy == .sdkNative)
+
                 Stepper(value: $controller.plannedSpanCount, in: 10...1_000, step: 10) {
                     HStack {
                         Text("Planned spans")

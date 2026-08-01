@@ -11,6 +11,8 @@ final class ExperimentController: ObservableObject {
     @Published var processorScheduleDelayMilliseconds = 250
     @Published var maxExportBatchSize = 256
     @Published var payloadAttributeBytes = 0
+    @Published var persistenceObjectPolicy: PersistenceObjectPolicy = .sdkNative
+    @Published var persistenceObjectByteBudget = 262_144
     @Published var httpClientMode: HTTPClientMode = .officialBase
     @Published var exporterMode: ExporterMode = .officialStateful
     @Published var plannedSpanCount = 100
@@ -59,6 +61,12 @@ final class ExperimentController: ObservableObject {
         if let payloadAttributeBytes = launchConfiguration.payloadAttributeBytes {
             self.payloadAttributeBytes = payloadAttributeBytes
         }
+        if let persistenceObjectPolicy = launchConfiguration.persistenceObjectPolicy {
+            self.persistenceObjectPolicy = persistenceObjectPolicy
+        }
+        if let persistenceObjectByteBudget = launchConfiguration.persistenceObjectByteBudget {
+            self.persistenceObjectByteBudget = persistenceObjectByteBudget
+        }
         if let httpClientMode = launchConfiguration.httpClientMode {
             self.httpClientMode = httpClientMode
         }
@@ -105,6 +113,8 @@ final class ExperimentController: ObservableObject {
                     processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     maxExportBatchSize: maxExportBatchSize,
                     payloadAttributeBytes: payloadAttributeBytes,
+                    persistenceObjectPolicy: persistenceObjectPolicy,
+                    persistenceObjectByteBudget: persistenceObjectByteBudget,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
@@ -139,6 +149,8 @@ final class ExperimentController: ObservableObject {
                     processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     maxExportBatchSize: maxExportBatchSize,
                     payloadAttributeBytes: payloadAttributeBytes,
+                    persistenceObjectPolicy: persistenceObjectPolicy,
+                    persistenceObjectByteBudget: persistenceObjectByteBudget,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
