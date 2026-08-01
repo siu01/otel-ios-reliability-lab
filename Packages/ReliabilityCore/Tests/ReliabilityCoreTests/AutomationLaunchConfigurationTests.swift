@@ -9,6 +9,7 @@ struct AutomationLaunchConfigurationTests {
         let config = AutomationLaunchConfiguration(arguments: [
             "OTelReliabilityLab",
             "--lab-autorun",
+            "--lab-experiment-id=E001",
             "--lab-run-id=00000000-0000-0000-0000-000000000042",
             "--lab-span-count=250",
             "--lab-transport=http",
@@ -16,6 +17,7 @@ struct AutomationLaunchConfigurationTests {
         ])
 
         #expect(config.shouldAutorun)
+        #expect(config.experimentID == ExperimentID(rawValue: "E001"))
         #expect(config.runID == UUID(uuidString: "00000000-0000-0000-0000-000000000042"))
         #expect(config.spanCount == 250)
         #expect(config.transport == .http)
@@ -26,15 +28,16 @@ struct AutomationLaunchConfigurationTests {
     func rejectsInvalidValues() {
         let config = AutomationLaunchConfiguration(arguments: [
             "OTelReliabilityLab",
+            "--lab-experiment-id=experiment-one",
             "--lab-span-count=0",
             "--lab-transport=udp",
             "--lab-persistence=yes",
         ])
 
         #expect(!config.shouldAutorun)
+        #expect(config.experimentID == nil)
         #expect(config.spanCount == nil)
         #expect(config.transport == nil)
         #expect(config.persistence == nil)
     }
 }
-

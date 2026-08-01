@@ -2,6 +2,7 @@ import Foundation
 
 public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let shouldAutorun: Bool
+    public let experimentID: ExperimentID?
     public let runID: UUID?
     public let spanCount: Int?
     public let transport: Transport?
@@ -9,6 +10,8 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
 
     public init(arguments: [String]) {
         shouldAutorun = arguments.contains("--lab-autorun")
+        experimentID = Self.value(for: "--lab-experiment-id", in: arguments)
+            .flatMap(ExperimentID.init(rawValue:))
         runID = Self.value(for: "--lab-run-id", in: arguments).flatMap(UUID.init)
         spanCount = Self.value(for: "--lab-span-count", in: arguments)
             .flatMap(Int.init)
@@ -24,4 +27,3 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
         return arguments.first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
     }
 }
-
