@@ -25,10 +25,12 @@ surviving file was therefore decodable and internally complete for those 232
 spans rather than a partially decoded request.
 
 Generated, run, and lifecycle evidence remained byte-identical across relaunch.
-Together with the 500-span no-file result, this run shows that default provider
-flush completion was not a binary durability barrier under the scaled workload.
-The abrupt stop intersected asynchronous persistence work after one recoverable
-unit existed but before the entire logical burst was durable.
+Pinned source and the matching instant result explain the partition: configured
+256-span chunks met a preset-independent 256-KiB encoded-object limit. The first
+three chunks, sequences 1...768, were rejected and their errors swallowed. The
+smaller 232-span suffix fit and became the one recoverable file. Provider flush
+completion therefore masked deterministic size loss rather than an incomplete
+asynchronous append in this run.
 
 ## Reconciliation
 

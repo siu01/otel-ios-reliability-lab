@@ -23,11 +23,12 @@ No HTTP record existed in the first process. Resume found no persistence file,
 made no HTTP attempt, and recovered 0/500. Generated, run, and lifecycle evidence
 remained byte-identical across relaunch.
 
-This is an accepted negative result, not a runner failure. It realizes the
-default-preset caveat identified in E007: provider force-flush can return after
-the persistence decorator has scheduled its private-queue append, without
-waiting for that append to become durable. At 500 spans, the host stopped the
-process inside that remaining write window.
+This is an accepted negative result, not a runner failure. Pinned-source
+inspection after the instant run produced the same outcome found a
+preset-independent cause: both presets cap one encoded object at 256 KiB. The
+500-span list was exported in 256- and 244-span chunks; neither encoded object
+fit. The writer swallowed each size error while the outer exporter still
+reported success, so provider force-flush completed with nothing durable.
 
 ## Reconciliation
 
