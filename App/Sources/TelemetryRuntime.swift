@@ -9,6 +9,7 @@ import ReliabilityCore
 enum TelemetryRuntimeError: LocalizedError {
     case unsupportedTransport(Transport)
     case missingPersistenceDirectory
+    case bytePolicyRequiresPersistence
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +17,8 @@ enum TelemetryRuntimeError: LocalizedError {
             "Transport \(transport.rawValue) is not wired yet"
         case .missingPersistenceDirectory:
             "Application Support directory is unavailable"
+        case .bytePolicyRequiresPersistence:
+            "Encoded-byte policy requires an official persistence mode"
         }
     }
 }
@@ -68,18 +71,38 @@ final class TelemetryRuntime {
             )
         }
 
-        let exporter: any SpanExporter
+        let persistenceExporter: any SpanExporter
         switch run.persistence {
         case .disabled:
-            exporter = baseExporter
+            persistenceExporter = baseExporter
         case .officialDefault, .officialInstant:
             let storageURL = try persistenceDirectory(for: run.persistence)
             let preset: PersistencePerformancePreset =
                 run.persistence == .officialInstant ? .instantDataDelivery : .default
-            exporter = try PersistenceSpanExporterDecorator(
+            persistenceExporter = try PersistenceSpanExporterDecorator(
                 spanExporter: baseExporter,
                 storageURL: storageURL,
                 performancePreset: preset
+            )
+        }
+
+        let exporter: any SpanExporter
+        switch run.persistenceObjectPolicy {
+        case .sdkNative:
+            exporter = persistenceExporter
+        case .encodedByteBudget:
+            guard run.persistence != .disabled else {
+                throw TelemetryRuntimeError.bytePolicyRequiresPersistence
+            }
+            let eventStore = PersistenceObjectPolicyEventStore(
+                fileURL: runEvidenceDirectory.appendingPathComponent(
+                    "object-policy-events.jsonl"
+                )
+            )
+            exporter = ByteBudgetingSpanExporter(
+                wrappedExporter: persistenceExporter,
+                byteBudget: run.persistenceObjectByteBudget,
+                eventStore: eventStore
             )
         }
 
