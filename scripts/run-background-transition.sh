@@ -90,6 +90,10 @@ case "$main_queue_probe" in
     exit 64
     ;;
 esac
+if [[ "$main_queue_probe" == "enabled" && "$flush_mode" != "explicit" ]]; then
+  echo "main queue probe requires an explicit background flush" >&2
+  exit 64
+fi
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 simulator_udid="${LAB_SIMULATOR_UDID:-72FAE57E-1A63-4BF7-A20E-8C1C23C294E9}"
@@ -313,15 +317,48 @@ if [[ "$flush_mode" == "explicit" ]]; then
   record_timing background_flush_completed_observed
   flush_duration_nanoseconds="$(jq -sr '[.[] | select(.phase == "flushCompleted")][0].durationNanoseconds' "$lifecycle_path")"
   printf 'flush_duration_nanoseconds\t%s\n' "$flush_duration_nanoseconds" >> "$boundary_log"
-  printf 'stop_trigger\tflush_completed\n' >> "$boundary_log"
+  if [[ "$main_queue_probe" == "disabled" ]]; then
+    printf 'stop_trigger\tflush_completed\n' >> "$boundary_log"
+  fi
 else
   printf 'flush_duration_nanoseconds\tnone\n' >> "$boundary_log"
   printf 'stop_trigger\tbackground_observed\n' >> "$boundary_log"
 fi
 
+if [[ "$main_queue_probe" == "enabled" ]]; then
+  probe_executed=false
+  for _ in {1..2000}; do
+    if rg -q '"phase":"mainQueueProbeExecuted"' "$lifecycle_path"; then
+      probe_executed=true
+      break
+    fi
+    sleep 0.005
+  done
+  if [[ "$probe_executed" != true ]]; then
+    record_timing main_queue_probe_timeout
+    echo "main queue probe did not execute within 10 seconds" >&2
+    exit 1
+  fi
+  record_timing main_queue_probe_executed_observed
+  main_queue_probe_delay_nanoseconds="$(jq -sr '[.[] | select(.phase == "mainQueueProbeExecuted")][0].durationNanoseconds' "$lifecycle_path")"
+  if [[ ! "$main_queue_probe_delay_nanoseconds" =~ ^[0-9]+$ ]]; then
+    echo "main queue probe delay is missing or invalid" >&2
+    exit 1
+  fi
+  main_queue_probe_overhead_nanoseconds=$((main_queue_probe_delay_nanoseconds - flush_duration_nanoseconds))
+  printf 'main_queue_probe_delay_nanoseconds\t%s\n' "$main_queue_probe_delay_nanoseconds" >> "$boundary_log"
+  printf 'main_queue_probe_overhead_nanoseconds\t%s\n' "$main_queue_probe_overhead_nanoseconds" >> "$boundary_log"
+  printf 'stop_trigger\tmain_queue_probe_executed\n' >> "$boundary_log"
+else
+  printf 'main_queue_probe_delay_nanoseconds\tnone\n' >> "$boundary_log"
+  printf 'main_queue_probe_overhead_nanoseconds\tnone\n' >> "$boundary_log"
+fi
+
 background_count="$(jq -s '[.[] | select(.phase == "backgroundObserved")] | length' "$lifecycle_path")"
 flush_started_count="$(jq -s '[.[] | select(.phase == "flushStarted")] | length' "$lifecycle_path")"
 flush_completed_count="$(jq -s '[.[] | select(.phase == "flushCompleted")] | length' "$lifecycle_path")"
+probe_scheduled_count="$(jq -s '[.[] | select(.phase == "mainQueueProbeScheduled")] | length' "$lifecycle_path")"
+probe_executed_count="$(jq -s '[.[] | select(.phase == "mainQueueProbeExecuted")] | length' "$lifecycle_path")"
 if [[ "$background_count" != "1" ]]; then
   echo "lifecycle evidence must contain exactly one background event" >&2
   exit 1
@@ -335,13 +372,43 @@ elif [[ "$flush_started_count" != "0" || "$flush_completed_count" != "0" ]]; the
   echo "no-flush control unexpectedly recorded a flush lifecycle" >&2
   exit 1
 fi
+if [[ "$main_queue_probe" == "enabled" ]]; then
+  if [[ "$probe_scheduled_count" != "1" || "$probe_executed_count" != "1" ]]; then
+    echo "enabled probe must contain exactly one scheduled/executed lifecycle pair" >&2
+    exit 1
+  fi
+  flush_started_nanoseconds="$(jq -sr '[.[] | select(.phase == "flushStarted")][0].timestampUnixNanoseconds' "$lifecycle_path")"
+  probe_scheduled_nanoseconds="$(jq -sr '[.[] | select(.phase == "mainQueueProbeScheduled")][0].timestampUnixNanoseconds' "$lifecycle_path")"
+  flush_completed_nanoseconds="$(jq -sr '[.[] | select(.phase == "flushCompleted")][0].timestampUnixNanoseconds' "$lifecycle_path")"
+  probe_executed_nanoseconds="$(jq -sr '[.[] | select(.phase == "mainQueueProbeExecuted")][0].timestampUnixNanoseconds' "$lifecycle_path")"
+  for lifecycle_timestamp in \
+      "$flush_started_nanoseconds" \
+      "$probe_scheduled_nanoseconds" \
+      "$flush_completed_nanoseconds" \
+      "$probe_executed_nanoseconds"; do
+    if [[ ! "$lifecycle_timestamp" =~ ^[0-9]+$ ]]; then
+      echo "main queue probe lifecycle timestamp is missing or invalid" >&2
+      exit 1
+    fi
+  done
+  if (( flush_started_nanoseconds > probe_scheduled_nanoseconds \
+      || probe_scheduled_nanoseconds > flush_completed_nanoseconds \
+      || flush_completed_nanoseconds > probe_executed_nanoseconds )); then
+    echo "main queue probe lifecycle order is invalid" >&2
+    exit 1
+  fi
+elif [[ "$probe_scheduled_count" != "0" || "$probe_executed_count" != "0" ]]; then
+  echo "disabled probe unexpectedly recorded lifecycle evidence" >&2
+  exit 1
+fi
 
 first_process_http_record_count=0
 if [[ -f "$app_run_dir/http-attempts.jsonl" ]]; then
   first_process_http_record_count="$(wc -l < "$app_run_dir/http-attempts.jsonl" | tr -d ' ')"
 fi
 printf 'first_process_http_records_before_stop\t%s\n' "$first_process_http_record_count" >> "$boundary_log"
-if [[ "$experiment_id" == "E009" || "$experiment_id" == "E014" ]] \
+if [[ "$experiment_id" == "E009" || "$experiment_id" == "E014" \
+    || "$experiment_id" == "E016" ]] \
     && [[ "$first_process_http_record_count" != "0" ]]; then
   echo "$experiment_id run reached the exporter HTTP path before stop" >&2
   exit 1
