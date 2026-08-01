@@ -593,12 +593,17 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
 これもlab notebookへ残している。成功runだけ並べると、測定器をどう疑い、
 どの仮説を捨てたかが見えなくなるからだ。
 
+E014の最初のapp buildでは、async protocol overloadが自分自身へ解決される実装に
+なっていた。不要なasync overrideを除いて修正した。またrunnerの引数追加では
+余分な`&&`を混入させたが、run前の`bash -n`で検出した。どちらも「結果に影響しない
+失敗」として消さず、notebookへ原因と修正を残した。
+
 ## 制約
 
 - iPhone 17 Simulator / iOS 26.4.1。
 - `opentelemetry-swift` 2.5.0、core 2.5.1。
 - `otelcol` 0.157.0。
-- loopbackの接続拒否、OTLP/HTTP protobuf、100〜1,000 Span、追加payload 0〜2,048B。
+- loopbackの接続拒否、OTLP/HTTP protobuf、1〜1,000 Span、追加payload 0〜300 KiB。
 - 各停止時間は1 run。ただし8秒3倍は非計測E002でも独立再現した。
 - 再起動試験は`simctl terminate`による制御された終了であり、ファイル観測後に
   実行した。
@@ -606,18 +611,21 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
   ユーザー終了と同一ではない。
 - E007のflush介入はsynthetic、E008は実際のSwiftUI lifecycle callbackだが、
   Simulatorがbackground実行を許した単一条件である。
+- E014/E015のbyte-aware policyはSDK外のprototypeで、公式2.5.0と同じJSON encode
+  形状へ意図的に結合している。各条件は単一runである。
 
 SDK全バージョン、実端末、すべてのネットワーク障害へ一般化はしない。
 
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
-- byte-aware splitとoversize error可視化をSDK外から実装できるか。
-- batch 1でも256 KiBを超える単一Spanは、どの失敗信号を残すか。
 - lifecycle flush中のmain-thread応答性とenergy costは何か。
+- byte-aware policyのencode表現がSDK更新で変わったとき、互換性をどう検知するか。
+- 明示oversize rejectionをmetric・log・crash-freeな診断exportへどう接続するか。
+- payload分布が均一でない実データでも、境界と探索コストを再現できるか。
 - 実端末でbackground flushがsuspension前に完了するか。途中で止めると何件残るか。
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
-- 1,000 Span時の書き込み時間、ストレージ、メインスレッド影響。
+- 1,000 Span時の書き込み時間、ストレージ、energy影響。
 - downstream dedupに必要な状態量。
 
 ## 結論
