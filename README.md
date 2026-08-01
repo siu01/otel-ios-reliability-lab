@@ -64,6 +64,9 @@ for the pinned Swift SDK:
 - E008: an actual SwiftUI background transition before the five-second batch
   schedule lost 100/100 without flush for both presets; provider force-flush in
   the background handler completed in 45–52 ms and recovered 100/100 exactly.
+- E009: scaling that intervention exposed a silent 256-KiB object boundary;
+  both presets recovered 0/500 and only the final 232/1,000 even though provider
+  force-flush reported completion.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -73,6 +76,8 @@ The distinct persistence boundary is summarized in
 [`experiments/E006-write-boundary/results.md`](experiments/E006-write-boundary/results.md).
 The real-background intervention is summarized in
 [`experiments/E008-background-transition/results.md`](experiments/E008-background-transition/results.md).
+The count-versus-byte size failure is summarized in
+[`experiments/E009-background-flush-scale/results.md`](experiments/E009-background-flush-scale/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -95,7 +100,8 @@ scripts/run-write-boundary.sh <evidence-run-id> <span-run-uuid> \
 scripts/run-flush-barrier.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <explicit-or-durabilityBarrier>
 scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
-  <officialInstant-or-officialDefault> <disabled-or-explicit>
+  <officialInstant-or-officialDefault> <disabled-or-explicit> \
+  [<experiment-id> <span-count> [<schedule-delay-ms>]]
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -115,3 +121,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E006 | What survives termination during the persistence write boundary? | Complete: 0/100 before an observable file, 100/100 after it |
 | E007 | Can a lifecycle flush close the upstream durability gap? | Complete: provider flush changed 0/100 to 100/100 for both presets |
 | E008 | Does the same intervention fit a real iOS background transition? | Complete: no-flush lost 100/100; background flush recovered 100/100 for both presets |
+| E009 | Does background flush remain durable from 100 to 1,000 spans? | Complete: both presets fell from 100/100 to 0/500 and 232/1,000 at the 256-KiB object boundary |
