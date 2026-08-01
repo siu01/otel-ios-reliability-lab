@@ -519,6 +519,33 @@ E014のlinear prefix探索は、候補を1件ずつencodeするためO(n²)だ�
 探索方法だけで最大92.6%短縮したが、次はこの時間中にmain queueが実際に止まるかを
 計測する。
 
+## E016：flush時間ではなく、main queueが戻るまでを測る
+
+`forceFlush`の所要時間を、そのままUI停止時間と呼ぶことはできない。そこで実際の
+`scenePhase.background` callback内で、flush直前に`DispatchQueue.main.async`へ
+closureを1個予約した。同期flushが終わりcallbackがmain queueへ制御を返すまで、
+このclosureは実行できない。予約から実行までのmonotonic delayをlifecycle台帳へ
+記録し、hostは実行済みeventを確認してからSIGKILLした。
+
+| Persistence | Policy / batch | Provider flush | Main-queue delay | Beyond flush | Received |
+|---|---|---:|---:|---:|---:|
+| Default | SDK native / 100 | 72.96ms | 297.10ms | 224.14ms | 500/500 |
+| Instant | SDK native / 100 | 129.50ms | 374.18ms | 244.68ms | 500/500 |
+| Default | Binary byte / 256 | 476.15ms | 702.84ms | 226.68ms | 500/500 |
+| Instant | Binary byte / 256 | 968.00ms | 1,271.14ms | 303.13ms | 500/500 |
+
+![E016でprovider flushと、その後main queue上の処理が再開するまでの追加遅延を4条件で比較した図](./assets/e016-main-queue-delay.svg)
+
+4条件とも500/500、重複0で、byte policyも243 + 13 + 242 + 2の分割を維持した。
+一方、事前登録した「flush以外の差は100ms未満」は0/4だった。最も分かりやすい
+反例はInstant + binaryである。provider call単体は968msで1秒未満なのに、すでに
+queueへ入っていた処理が走ったのは1,271ms後だった。
+
+追加の224〜303msには`flushCompleted`の台帳書き込み、callbackの残り、backgroundへ
+移るSimulator/OSのscheduleが含まれ、E016だけでは分離できない。しかし、それらは
+providerだけを計時すれば丸ごと見落とす時間でもある。「データを救えた」と
+「main actorを許容時間内に返せた」は別の成功条件だった。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
