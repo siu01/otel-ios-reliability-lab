@@ -103,6 +103,16 @@ struct ContentView: View {
                 }
                 .disabled(controller.persistenceObjectPolicy == .sdkNative)
 
+                Picker(
+                    "Byte search",
+                    selection: $controller.persistenceObjectPartitionStrategy
+                ) {
+                    Text("Linear").tag(ByteBudgetPartitionStrategy.linearPrefixEncoding)
+                    Text("Binary").tag(ByteBudgetPartitionStrategy.binarySearchEncoding)
+                }
+                .pickerStyle(.segmented)
+                .disabled(controller.persistenceObjectPolicy == .sdkNative)
+
                 Stepper(value: $controller.plannedSpanCount, in: 10...1_000, step: 10) {
                     HStack {
                         Text("Planned spans")

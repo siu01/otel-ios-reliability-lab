@@ -102,6 +102,7 @@ final class TelemetryRuntime {
             exporter = ByteBudgetingSpanExporter(
                 wrappedExporter: persistenceExporter,
                 byteBudget: run.persistenceObjectByteBudget,
+                strategy: run.persistenceObjectPartitionStrategy,
                 eventStore: eventStore
             )
         }

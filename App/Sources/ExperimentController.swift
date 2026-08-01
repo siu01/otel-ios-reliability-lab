@@ -13,6 +13,8 @@ final class ExperimentController: ObservableObject {
     @Published var payloadAttributeBytes = 0
     @Published var persistenceObjectPolicy: PersistenceObjectPolicy = .sdkNative
     @Published var persistenceObjectByteBudget = 262_144
+    @Published var persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy =
+        .linearPrefixEncoding
     @Published var httpClientMode: HTTPClientMode = .officialBase
     @Published var exporterMode: ExporterMode = .officialStateful
     @Published var plannedSpanCount = 100
@@ -67,6 +69,9 @@ final class ExperimentController: ObservableObject {
         if let persistenceObjectByteBudget = launchConfiguration.persistenceObjectByteBudget {
             self.persistenceObjectByteBudget = persistenceObjectByteBudget
         }
+        if let strategy = launchConfiguration.persistenceObjectPartitionStrategy {
+            persistenceObjectPartitionStrategy = strategy
+        }
         if let httpClientMode = launchConfiguration.httpClientMode {
             self.httpClientMode = httpClientMode
         }
@@ -115,6 +120,7 @@ final class ExperimentController: ObservableObject {
                     payloadAttributeBytes: payloadAttributeBytes,
                     persistenceObjectPolicy: persistenceObjectPolicy,
                     persistenceObjectByteBudget: persistenceObjectByteBudget,
+                    persistenceObjectPartitionStrategy: persistenceObjectPartitionStrategy,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
@@ -151,6 +157,7 @@ final class ExperimentController: ObservableObject {
                     payloadAttributeBytes: payloadAttributeBytes,
                     persistenceObjectPolicy: persistenceObjectPolicy,
                     persistenceObjectByteBudget: persistenceObjectByteBudget,
+                    persistenceObjectPartitionStrategy: persistenceObjectPartitionStrategy,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )

@@ -13,10 +13,14 @@ final class ByteBudgetingSpanExporter: SpanExporter, @unchecked Sendable {
     init(
         wrappedExporter: any SpanExporter,
         byteBudget: Int,
+        strategy: ByteBudgetPartitionStrategy,
         eventStore: PersistenceObjectPolicyEventStore
     ) {
         self.wrappedExporter = wrappedExporter
-        partitioner = ByteBudgetPartitioner(byteBudget: byteBudget)
+        partitioner = ByteBudgetPartitioner(
+            byteBudget: byteBudget,
+            strategy: strategy
+        )
         self.eventStore = eventStore
     }
 
