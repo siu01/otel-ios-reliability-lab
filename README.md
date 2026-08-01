@@ -48,6 +48,9 @@ The current result is a retry-composition warning for the pinned Swift SDK:
   duplication; the Collector received all 100 logical spans three times.
 - E003: request instrumentation directly recorded bodies growing from the
   100-span size to 200-span and 300-span sizes after completed failures.
+- E004: a stateless exporter beneath official persistence kept every retry at
+  the 100-span body size and recovered 100/100 with no duplicates after one and
+  two completed failures.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -66,7 +69,8 @@ scripts/build-simulator.sh
 scripts/run-collector.sh <run-id>
 scripts/reconcile-run.sh evidence/raw/<run-id>
 scripts/run-late-collector.sh E003 <evidence-run-id> <span-run-uuid> \
-  officialInstant disabled instrumentedBase <collector-delay-seconds>
+  officialInstant disabled instrumentedBase <collector-delay-seconds> \
+  <officialStateful-or-statelessHTTP>
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -81,5 +85,5 @@ their sources of truth are `project.yml` and the pinned installer.
 | E001 | What happens when the Collector starts after generation? | Complete: 0%, exact 100%, and duplicated 100% diverged by preset |
 | E002 | Is explicit force flush required for instant-preset duplication? | Complete: no; 3x delivery occurred without it |
 | E003 | Do HTTP attempts reveal retry amplification? | Complete: 1x/2x/3x matched 0/1/2 completed failures |
-| E004 | Can single-owner retry stop amplification without reintroducing loss? | Next |
-| E005 | What survives process termination and relaunch? | Planned |
+| E004 | Can single-owner retry stop amplification without reintroducing loss? | Complete: 100/100 exactly once after one and two failures |
+| E005 | What survives process termination and relaunch? | Next |
