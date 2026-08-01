@@ -35,7 +35,33 @@ termination, and relaunch—and what does persistence change?
 
 ## Status
 
-The lab is being bootstrapped. Dependency inspection found an official
-`PersistenceSpanExporterDecorator`, so the first durable comparison will test it
-before considering custom persistence. No reliability claim is valid until its
-experiment has a committed plan, raw evidence, and reconciliation report.
+The iOS app, native Collector capture, generated ledger, and reconciliation CLI
+are operational. E000 established a connected OTLP/HTTP control: disabled,
+default persistence, and instant persistence each delivered 100/100 unique spans
+with no duplicates. Outage and lifecycle claims are still untested.
+
+No reliability claim is valid until its experiment has a committed plan, raw
+evidence, and reconciliation report.
+
+## Quick start
+
+```shell
+scripts/install-collector.sh
+scripts/test-core.sh
+scripts/build-simulator.sh
+scripts/run-collector.sh <run-id>
+scripts/reconcile-run.sh evidence/raw/<run-id>
+```
+
+`scripts/run-collector.sh` needs permission to bind local OTLP and internal
+telemetry ports. Generated Xcode projects and downloaded binaries are ignored;
+their sources of truth are `project.yml` and the pinned installer.
+
+## Experiment index
+
+| ID | Question | State |
+|---|---|---|
+| E000 | Does the connected HTTP control reconcile exactly? | Complete: 3/3 conditions at 100% |
+| E001 | What happens when the Collector starts after generation? | Planned |
+| E002 | What survives abrupt process termination? | Planned |
+| E003 | What is recovered after relaunch? | Planned |
