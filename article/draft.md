@@ -583,6 +583,11 @@ byteを保存前に測り、分けられる100件・500件は全件回収し、�
 超過量つきの明示rejectionへ変えた。さらにE015は分割境界の探索をlinearから
 binary searchへ変え、同じpartitionと回収結果のままflushを85.1〜92.6%短縮した。
 
+E016では、その短縮後もproviderの時間だけを見れば不十分だと分かった。main queueへ
+先に予約した処理は、flush完了時間よりさらに224〜303ms遅れて実行された。4条件の
+deliveryは500/500でも、Instant + binaryのqueue delayは1.27秒だった。耐久化の
+成功とlifecycle callbackの応答性は、同じ合否にまとめられない。
+
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
 正しくretryしても、組み合わせ全体が望むsemanticsになるとは限らない。
@@ -603,12 +608,15 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
   （local evidenceとexport failureまでproof済み。productionの通知経路は未検証）。
 - binary searchは正確な境界探索を高速化するが、SDK内部のencode表現と上限へ
   結合するため、SDK更新時に互換testを行う。
+- byte分割と同期flushをmain actorで直列実行せず、durability completionを別に
+  観測できる構成を検証する。
+- provider callだけでなく、callbackがmain queueへ制御を返すまでを計測する。
 - batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次はbackground flush中のmain-thread応答性を直接測り、byte-aware policyの
-計算時間をlifecycle budgetの中で評価する必要がある。
+次は同じprobeを使い、計算・flushをmain actor外へ移す介入がqueue delayと
+durabilityの両方を維持できるか評価する必要がある。
 
 ## 試行錯誤も証跡に残す
 
@@ -640,13 +648,16 @@ E014の最初のapp buildでは、async protocol overloadが自分自身へ解�
   Simulatorがbackground実行を許した単一条件である。
 - E014/E015のbyte-aware policyはSDK外のprototypeで、公式2.5.0と同じJSON encode
   形状へ意図的に結合している。各条件は単一runである。
+- E016はbackground中に予約済みmain-queue closureが実行されるまでを測った。
+  visible frame・touch latency・energyの計測ではなく、各条件は単一runである。
 
 SDK全バージョン、実端末、すべてのネットワーク障害へ一般化はしない。
 
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
-- lifecycle flush中のmain-thread応答性とenergy costは何か。
+- byte分割とflushをmain actor外へ移しても、suspension前にdurabilityを確認できるか。
+- 同じ介入のvisible frame・touch latency・energy costは何か。
 - byte-aware policyのencode表現がSDK更新で変わったとき、互換性をどう検知するか。
 - 明示oversize rejectionをmetric・log・crash-freeな診断exportへどう接続するか。
 - payload分布が均一でない実データでも、境界と探索コストを再現できるか。
@@ -702,9 +713,14 @@ encoded byteを測るwrapperを置き、既知の100件・500件全損をすべ�
 ただし最初のlinear探索は500件で4.5〜7.0秒を要した。E015のbinary searchは、
 同じobject partition、同じsequence集合、重複0を維持したまま135〜540msへ短縮した。
 データ生存率を上げる介入は、lifecycle中に実行できる計算量まで含めて設計する必要が
-ある。次はflush時間を代理指標にせず、main queueの停止時間そのものを測る。
+ある。
+
+E016でmain queueへ先に予約した処理をprobeにすると、500/500を維持した4条件でも
+実行再開は297〜1,271ms後だった。provider callとの差は224〜303msあり、Instantの
+binary条件では968msのflushが1,271msのqueue delayになった。flush APIの計時だけで
+lifecycle callback全体の応答性を判断してはいけない。
 
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
 渡るか、1 objectが内部byte上限へ収まるか、境界計算がlifecycle budgetへ収まるか
-まで測る必要がある。
+に加え、main actorへいつ制御が戻るかまで測る必要がある。
