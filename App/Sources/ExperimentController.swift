@@ -15,6 +15,7 @@ final class ExperimentController: ObservableObject {
     @Published var persistenceObjectByteBudget = 262_144
     @Published var persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy =
         .linearPrefixEncoding
+    @Published var mainQueueProbeEnabled = false
     @Published var httpClientMode: HTTPClientMode = .officialBase
     @Published var exporterMode: ExporterMode = .officialStateful
     @Published var plannedSpanCount = 100
@@ -72,6 +73,9 @@ final class ExperimentController: ObservableObject {
         if let strategy = launchConfiguration.persistenceObjectPartitionStrategy {
             persistenceObjectPartitionStrategy = strategy
         }
+        if let mainQueueProbeEnabled = launchConfiguration.mainQueueProbeEnabled {
+            self.mainQueueProbeEnabled = mainQueueProbeEnabled
+        }
         if let httpClientMode = launchConfiguration.httpClientMode {
             self.httpClientMode = httpClientMode
         }
@@ -121,6 +125,7 @@ final class ExperimentController: ObservableObject {
                     persistenceObjectPolicy: persistenceObjectPolicy,
                     persistenceObjectByteBudget: persistenceObjectByteBudget,
                     persistenceObjectPartitionStrategy: persistenceObjectPartitionStrategy,
+                    mainQueueProbeEnabled: mainQueueProbeEnabled,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
@@ -158,6 +163,7 @@ final class ExperimentController: ObservableObject {
                     persistenceObjectPolicy: persistenceObjectPolicy,
                     persistenceObjectByteBudget: persistenceObjectByteBudget,
                     persistenceObjectPartitionStrategy: persistenceObjectPartitionStrategy,
+                    mainQueueProbeEnabled: mainQueueProbeEnabled,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
@@ -206,7 +212,11 @@ final class ExperimentController: ObservableObject {
                 if flushMode == .disabled || flushTrigger == .background {
                     status = "Leaving export to scheduled workers"
                 } else {
-                    try performFlush(mode: flushMode, evidenceStore: evidenceStore)
+                    try performFlush(
+                        mode: flushMode,
+                        mainQueueProbeEnabled: run.mainQueueProbeEnabled,
+                        evidenceStore: evidenceStore
+                    )
                 }
                 try evidenceStore.appendLifecycleEvent(
                     RunLifecycleEvent(
@@ -250,7 +260,11 @@ final class ExperimentController: ObservableObject {
             )
             status = "Background transition observed"
             if run.flushTrigger == .background, run.flushMode != .disabled {
-                try performFlush(mode: run.flushMode, evidenceStore: evidenceStore)
+                try performFlush(
+                    mode: run.flushMode,
+                    mainQueueProbeEnabled: run.mainQueueProbeEnabled,
+                    evidenceStore: evidenceStore
+                )
                 status = "Background flush complete"
             }
         } catch {
@@ -260,6 +274,7 @@ final class ExperimentController: ObservableObject {
 
     private func performFlush(
         mode: FlushMode,
+        mainQueueProbeEnabled: Bool,
         evidenceStore: RunEvidenceStore
     ) throws {
         status = mode == .durabilityBarrier
@@ -272,6 +287,9 @@ final class ExperimentController: ObservableObject {
                 flushMode: mode
             )
         )
+        if mainQueueProbeEnabled {
+            try scheduleMainQueueProbe(mode: mode, evidenceStore: evidenceStore)
+        }
         let flushStarted = DispatchTime.now().uptimeNanoseconds
         telemetry.forceFlush(durabilityBarrier: mode == .durabilityBarrier)
         let flushDuration = DispatchTime.now().uptimeNanoseconds - flushStarted
@@ -283,6 +301,35 @@ final class ExperimentController: ObservableObject {
                 durationNanoseconds: Int64(flushDuration)
             )
         )
+    }
+
+    private func scheduleMainQueueProbe(
+        mode: FlushMode,
+        evidenceStore: RunEvidenceStore
+    ) throws {
+        try evidenceStore.appendLifecycleEvent(
+            RunLifecycleEvent(
+                phase: .mainQueueProbeScheduled,
+                timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                flushMode: mode
+            )
+        )
+        let scheduledAt = DispatchTime.now().uptimeNanoseconds
+        DispatchQueue.main.async { [weak self] in
+            let delay = DispatchTime.now().uptimeNanoseconds - scheduledAt
+            do {
+                try evidenceStore.appendLifecycleEvent(
+                    RunLifecycleEvent(
+                        phase: .mainQueueProbeExecuted,
+                        timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                        flushMode: mode,
+                        durationNanoseconds: Int64(delay)
+                    )
+                )
+            } catch {
+                self?.status = "Failed to record main-queue probe: \(error.localizedDescription)"
+            }
+        }
     }
 
     private static func currentUnixNanoseconds() -> Int64 {
