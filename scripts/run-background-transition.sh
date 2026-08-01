@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 ]]; then
-  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms>]]" >&2
+if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 && $# -ne 8 ]]; then
+  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size>]]]" >&2
   exit 64
 fi
 
@@ -13,6 +13,7 @@ flush_mode="$4"
 experiment_id="${5:-E008}"
 span_count="${6:-100}"
 schedule_delay_milliseconds="${7:-5000}"
+max_export_batch_size="${8:-256}"
 
 if [[ ! "$evidence_run_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "invalid evidence run ID" >&2
@@ -47,6 +48,10 @@ fi
 if [[ ! "$schedule_delay_milliseconds" =~ ^[1-9][0-9]*$ ]] \
     || (( schedule_delay_milliseconds < 250 || schedule_delay_milliseconds > 60000 )); then
   echo "schedule delay must be an integer from 250 through 60000 milliseconds" >&2
+  exit 64
+fi
+if [[ ! "$max_export_batch_size" =~ ^[1-9][0-9]*$ ]] || (( max_export_batch_size > 512 )); then
+  echo "maximum export batch size must be an integer from 1 through 512" >&2
   exit 64
 fi
 
@@ -144,6 +149,7 @@ printf 'experiment_id\t%s\n' "$experiment_id" >> "$boundary_log"
 printf 'planned_span_count\t%s\n' "$span_count" >> "$boundary_log"
 printf 'flush_trigger\tbackground\n' >> "$boundary_log"
 printf 'processor_schedule_delay_milliseconds\t%s\n' "$schedule_delay_milliseconds" >> "$boundary_log"
+printf 'max_export_batch_size\t%s\n' "$max_export_batch_size" >> "$boundary_log"
 printf 'background_app\t%s\n' "$background_bundle_id" >> "$boundary_log"
 printf 'stop_mechanism\tdirect_sigkill\n' >> "$boundary_log"
 printf 'artifact\tsha256\n' > "$digest_log"
@@ -174,6 +180,7 @@ xcrun simctl launch \
   "--lab-flush=$flush_mode" \
   --lab-flush-trigger=background \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
+  "--lab-max-export-batch-size=$max_export_batch_size" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$first_launch_log"
 record_timing first_launch_returned
@@ -349,6 +356,7 @@ xcrun simctl launch \
   "--lab-flush=$flush_mode" \
   --lab-flush-trigger=background \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
+  "--lab-max-export-batch-size=$max_export_batch_size" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$resume_launch_log"
 record_timing resume_launch_returned
