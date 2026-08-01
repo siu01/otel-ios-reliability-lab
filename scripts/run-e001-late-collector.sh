@@ -35,6 +35,7 @@ run_dir="$repo_dir/evidence/raw/$evidence_run_id"
 capture_path="$run_dir/received-otlp.jsonl"
 collector_log="$run_dir/collector.log"
 timing_log="$run_dir/host-timing.tsv"
+persistence_snapshot="$run_dir/persistence-files-after.tsv"
 collector_binary="$repo_dir/collector/bin/otelcol"
 collector_pid=""
 
@@ -50,7 +51,7 @@ cleanup_collector() {
 }
 trap cleanup_collector EXIT INT TERM
 
-for path in "$capture_path" "$collector_log" "$timing_log"; do
+for path in "$capture_path" "$collector_log" "$timing_log" "$persistence_snapshot"; do
   if [[ -e "$path" ]]; then
     echo "refusing to overwrite existing evidence: $path" >&2
     exit 1
@@ -122,8 +123,24 @@ fi
 app_container="$(xcrun simctl get_app_container "$simulator_udid" "$bundle_id" data)"
 lower_span_run_id="$(printf '%s' "$span_run_id" | tr '[:upper:]' '[:lower:]')"
 app_run_dir="$app_container/Library/Application Support/OTelReliabilityLab/runs/$lower_span_run_id"
+persistence_dir="$app_container/Library/Application Support/OTelReliabilityLab/persistence/$persistence_mode"
 cp "$app_run_dir/generated.jsonl" "$run_dir/generated.jsonl"
 cp "$app_run_dir/run.json" "$run_dir/run.json"
+
+if [[ -d "$persistence_dir" ]]; then
+  printf '# directory_exists=true\n' > "$persistence_snapshot"
+else
+  printf '# directory_exists=false\n' > "$persistence_snapshot"
+fi
+printf 'relative_path\tbytes\tsha256\n' >> "$persistence_snapshot"
+if [[ -d "$persistence_dir" ]]; then
+  while IFS= read -r persistence_file; do
+    relative_path="${persistence_file#"$persistence_dir"/}"
+    byte_count="$(stat -f '%z' "$persistence_file")"
+    digest="$(shasum -a 256 "$persistence_file" | awk '{print $1}')"
+    printf '%s\t%s\t%s\n' "$relative_path" "$byte_count" "$digest" >> "$persistence_snapshot"
+  done < <(find "$persistence_dir" -type f -print | sort)
+fi
 xcrun simctl terminate "$simulator_udid" "$bundle_id"
 
 "$repo_dir/scripts/reconcile-run.sh" "$run_dir"
