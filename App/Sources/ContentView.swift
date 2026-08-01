@@ -81,7 +81,7 @@ struct ContentView: View {
     private var actionCard: some View {
         LabCard(title: "Baseline control", icon: "waveform.path.ecg") {
             VStack(spacing: 12) {
-                Button(action: controller.runBaselineBurst) {
+                Button(action: { controller.runBaselineBurst() }) {
                     Label(
                         controller.isRunning ? "Running…" : "Run baseline burst",
                         systemImage: "bolt.fill"

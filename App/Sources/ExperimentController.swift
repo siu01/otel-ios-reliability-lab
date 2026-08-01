@@ -14,6 +14,26 @@ final class ExperimentController: ObservableObject {
 
     let experimentID = ExperimentID(rawValue: "E000")!
     private let telemetry = TelemetryRuntime()
+    private let launchConfiguration: AutomationLaunchConfiguration
+    private var didAutorun = false
+
+    init(arguments: [String] = ProcessInfo.processInfo.arguments) {
+        let launchConfiguration = AutomationLaunchConfiguration(arguments: arguments)
+        self.launchConfiguration = launchConfiguration
+
+        if let spanCount = launchConfiguration.spanCount {
+            plannedSpanCount = spanCount
+        }
+        if let transport = launchConfiguration.transport {
+            self.transport = transport
+        }
+        if let persistence = launchConfiguration.persistence {
+            self.persistence = persistence
+        }
+        status = launchConfiguration.shouldAutorun
+            ? "Automated baseline queued"
+            : "Ready for baseline"
+    }
 
     var deliveryText: String {
         guard generatedCount > 0 else { return "—" }
@@ -21,7 +41,13 @@ final class ExperimentController: ObservableObject {
         return rate.formatted(.percent.precision(.fractionLength(1)))
     }
 
-    func runBaselineBurst() {
+    func autorunIfRequested() {
+        guard launchConfiguration.shouldAutorun, !didAutorun else { return }
+        didAutorun = true
+        runBaselineBurst(runID: launchConfiguration.runID)
+    }
+
+    func runBaselineBurst(runID: UUID? = nil) {
         guard !isRunning else { return }
         isRunning = true
         status = "Configuring exporter"
@@ -30,6 +56,7 @@ final class ExperimentController: ObservableObject {
             do {
                 let run = RunDescriptor(
                     experimentID: experimentID,
+                    runID: runID ?? UUID(),
                     plannedSpanCount: plannedSpanCount,
                     transport: transport,
                     persistence: persistence

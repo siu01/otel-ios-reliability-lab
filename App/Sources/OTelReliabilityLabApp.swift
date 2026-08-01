@@ -8,7 +8,9 @@ struct OTelReliabilityLabApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(controller)
+                .task {
+                    controller.autorunIfRequested()
+                }
         }
     }
 }
-
