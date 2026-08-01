@@ -1,0 +1,12 @@
+metric	value
+flush_mode	explicit
+flush_trigger	background
+processor_schedule_delay_milliseconds	5000
+background_app	com.apple.mobilesafari
+stop_mechanism	direct_sigkill
+first_process_pid	53612
+generated_records_before_background	100
+flush_duration_nanoseconds	45323542
+stop_trigger	flush_completed
+persistence_visible_before_request	true
+persistence_files_after_termination	1
