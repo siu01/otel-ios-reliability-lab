@@ -81,7 +81,7 @@ final class TelemetryRuntime {
 
         let processor = BatchSpanProcessor(
             spanExporter: exporter,
-            scheduleDelay: 0.25,
+            scheduleDelay: TimeInterval(run.processorScheduleDelayMilliseconds) / 1_000,
             exportTimeout: 2,
             maxQueueSize: 4_096,
             maxExportBatchSize: 256

@@ -7,6 +7,8 @@ final class ExperimentController: ObservableObject {
     @Published var transport: Transport = .http
     @Published var persistence: PersistenceMode = .disabled
     @Published var flushMode: FlushMode = .explicit
+    @Published var flushTrigger: FlushTrigger = .afterBurst
+    @Published var processorScheduleDelayMilliseconds = 250
     @Published var httpClientMode: HTTPClientMode = .officialBase
     @Published var exporterMode: ExporterMode = .officialStateful
     @Published var plannedSpanCount = 100
@@ -22,6 +24,9 @@ final class ExperimentController: ObservableObject {
     private let launchConfiguration: AutomationLaunchConfiguration
     private var didAutorun = false
     private var didResume = false
+    private var didObserveBackground = false
+    private var activeRun: RunDescriptor?
+    private var activeEvidenceStore: RunEvidenceStore?
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
         let launchConfiguration = AutomationLaunchConfiguration(arguments: arguments)
@@ -39,6 +44,12 @@ final class ExperimentController: ObservableObject {
         }
         if let flushMode = launchConfiguration.flushMode {
             self.flushMode = flushMode
+        }
+        if let flushTrigger = launchConfiguration.flushTrigger {
+            self.flushTrigger = flushTrigger
+        }
+        if let scheduleDelay = launchConfiguration.processorScheduleDelayMilliseconds {
+            processorScheduleDelayMilliseconds = scheduleDelay
         }
         if let httpClientMode = launchConfiguration.httpClientMode {
             self.httpClientMode = httpClientMode
@@ -82,6 +93,8 @@ final class ExperimentController: ObservableObject {
                     transport: transport,
                     persistence: persistence,
                     flushMode: flushMode,
+                    flushTrigger: flushTrigger,
+                    processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
@@ -112,12 +125,17 @@ final class ExperimentController: ObservableObject {
                     transport: transport,
                     persistence: persistence,
                     flushMode: flushMode,
+                    flushTrigger: flushTrigger,
+                    processorScheduleDelayMilliseconds: processorScheduleDelayMilliseconds,
                     httpClientMode: httpClientMode,
                     exporterMode: exporterMode
                 )
                 latestRunID = run.runID
                 isReconciled = false
                 let evidenceStore = try RunEvidenceStore(run: run)
+                activeRun = run
+                activeEvidenceStore = evidenceStore
+                didObserveBackground = false
                 try telemetry.configure(
                     for: run,
                     runEvidenceDirectory: evidenceStore.runDirectory
@@ -154,33 +172,10 @@ final class ExperimentController: ObservableObject {
                 )
                 generatedCount = generated.count
                 receivedCount = 0
-                switch flushMode {
-                case .disabled:
+                if flushMode == .disabled || flushTrigger == .background {
                     status = "Leaving export to scheduled workers"
-                case .explicit, .durabilityBarrier:
-                    status = flushMode == .durabilityBarrier
-                        ? "Crossing durability barrier"
-                        : "Flushing provider"
-                    try evidenceStore.appendLifecycleEvent(
-                        RunLifecycleEvent(
-                            phase: .flushStarted,
-                            timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
-                            flushMode: flushMode
-                        )
-                    )
-                    let flushStarted = DispatchTime.now().uptimeNanoseconds
-                    telemetry.forceFlush(
-                        durabilityBarrier: flushMode == .durabilityBarrier
-                    )
-                    let flushDuration = DispatchTime.now().uptimeNanoseconds - flushStarted
-                    try evidenceStore.appendLifecycleEvent(
-                        RunLifecycleEvent(
-                            phase: .flushCompleted,
-                            timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
-                            flushMode: flushMode,
-                            durationNanoseconds: Int64(flushDuration)
-                        )
-                    )
+                } else {
+                    try performFlush(mode: flushMode, evidenceStore: evidenceStore)
                 }
                 try evidenceStore.appendLifecycleEvent(
                     RunLifecycleEvent(
@@ -202,7 +197,61 @@ final class ExperimentController: ObservableObject {
         receivedCount = 0
         latestRunID = nil
         isReconciled = false
+        activeRun = nil
+        activeEvidenceStore = nil
+        didObserveBackground = false
         status = "Ready for baseline"
+    }
+
+    func handleBackgroundTransition() {
+        guard !didObserveBackground,
+              let run = activeRun,
+              let evidenceStore = activeEvidenceStore else { return }
+        didObserveBackground = true
+
+        do {
+            try evidenceStore.appendLifecycleEvent(
+                RunLifecycleEvent(
+                    phase: .backgroundObserved,
+                    timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                    flushMode: run.flushMode
+                )
+            )
+            status = "Background transition observed"
+            if run.flushTrigger == .background, run.flushMode != .disabled {
+                try performFlush(mode: run.flushMode, evidenceStore: evidenceStore)
+                status = "Background flush complete"
+            }
+        } catch {
+            status = "Failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func performFlush(
+        mode: FlushMode,
+        evidenceStore: RunEvidenceStore
+    ) throws {
+        status = mode == .durabilityBarrier
+            ? "Crossing durability barrier"
+            : "Flushing provider"
+        try evidenceStore.appendLifecycleEvent(
+            RunLifecycleEvent(
+                phase: .flushStarted,
+                timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                flushMode: mode
+            )
+        )
+        let flushStarted = DispatchTime.now().uptimeNanoseconds
+        telemetry.forceFlush(durabilityBarrier: mode == .durabilityBarrier)
+        let flushDuration = DispatchTime.now().uptimeNanoseconds - flushStarted
+        try evidenceStore.appendLifecycleEvent(
+            RunLifecycleEvent(
+                phase: .flushCompleted,
+                timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                flushMode: mode,
+                durationNanoseconds: Int64(flushDuration)
+            )
+        )
     }
 
     private static func currentUnixNanoseconds() -> Int64 {
