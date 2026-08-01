@@ -9,6 +9,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let persistence: PersistenceMode
     public let flushMode: FlushMode
     public let httpClientMode: HTTPClientMode
+    public let exporterMode: ExporterMode
 
     public init(
         experimentID: ExperimentID,
@@ -18,7 +19,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         transport: Transport,
         persistence: PersistenceMode,
         flushMode: FlushMode = .explicit,
-        httpClientMode: HTTPClientMode = .officialBase
+        httpClientMode: HTTPClientMode = .officialBase,
+        exporterMode: ExporterMode = .officialStateful
     ) {
         precondition(plannedSpanCount > 0, "A run must plan at least one span")
         self.experimentID = experimentID
@@ -29,6 +31,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.persistence = persistence
         self.flushMode = flushMode
         self.httpClientMode = httpClientMode
+        self.exporterMode = exporterMode
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -40,6 +43,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case persistence
         case flushMode
         case httpClientMode
+        case exporterMode
     }
 
     public init(from decoder: any Decoder) throws {
@@ -55,6 +59,10 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             HTTPClientMode.self,
             forKey: .httpClientMode
         ) ?? .officialBase
+        exporterMode = try container.decodeIfPresent(
+            ExporterMode.self,
+            forKey: .exporterMode
+        ) ?? .officialStateful
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -67,6 +75,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         try container.encode(persistence, forKey: .persistence)
         try container.encode(flushMode, forKey: .flushMode)
         try container.encode(httpClientMode, forKey: .httpClientMode)
+        try container.encode(exporterMode, forKey: .exporterMode)
     }
 }
 
@@ -89,4 +98,9 @@ public enum FlushMode: String, Codable, CaseIterable, Sendable {
 public enum HTTPClientMode: String, Codable, CaseIterable, Sendable {
     case officialBase
     case instrumentedBase
+}
+
+public enum ExporterMode: String, Codable, CaseIterable, Sendable {
+    case officialStateful
+    case statelessHTTP
 }
