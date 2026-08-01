@@ -28,7 +28,8 @@ final class TelemetryRuntime {
     private var provider: TracerProviderSdk?
     private var tracer: (any Tracer)?
     private var exporter: (any SpanExporter)?
-    private var payloadAttributeValue: String?
+    private var primaryPayloadAttributeValue: String?
+    private var secondaryPayloadAttributeValue: String?
 
     func configure(for run: RunDescriptor, runEvidenceDirectory: URL) throws {
         guard run.transport == .http else {
@@ -36,8 +37,11 @@ final class TelemetryRuntime {
         }
 
         provider?.shutdown()
-        payloadAttributeValue = run.payloadAttributeBytes > 0
+        primaryPayloadAttributeValue = run.payloadAttributeBytes > 0
             ? String(repeating: "x", count: run.payloadAttributeBytes)
+            : nil
+        secondaryPayloadAttributeValue = run.payloadAttributeSecondaryBytes > 0
+            ? String(repeating: "x", count: run.payloadAttributeSecondaryBytes)
             : nil
 
         let endpoint = URL(string: "http://127.0.0.1:4318/v1/traces")!
@@ -143,6 +147,15 @@ final class TelemetryRuntime {
             key: "lab.ended_at_unix_nano",
             value: Int(endedAtUnixNanoseconds)
         )
+        let payloadByteCount = run.payloadAttributePattern.byteCount(
+            forSequence: sequence,
+            plannedSpanCount: run.plannedSpanCount,
+            primaryBytes: run.payloadAttributeBytes,
+            secondaryBytes: run.payloadAttributeSecondaryBytes
+        )
+        let payloadAttributeValue = payloadByteCount == run.payloadAttributeBytes
+            ? primaryPayloadAttributeValue
+            : secondaryPayloadAttributeValue
         if let payloadAttributeValue {
             span.setAttribute(key: "lab.payload", value: payloadAttributeValue)
         }
