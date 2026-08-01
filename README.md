@@ -31,6 +31,10 @@ termination, and relaunch—and what does persistence change?
 - `experiments/`: immutable plans and summarized results by experiment ID.
 - `evidence/`: screenshots and checksummed raw observations.
 - `docs/lab-notebook/`: chronological decisions, failures, and discoveries.
+- [`docs/reproduction.md`](docs/reproduction.md): pinned environment and replay workflow.
+- [`docs/article-publication-checklist.md`](docs/article-publication-checklist.md):
+  unresolved asset, editorial, and remote-anchor work.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): evidence-first experiment protocol.
 - `article/`: article outline and draft backed by experiment IDs.
 
 ## Status
@@ -173,7 +177,14 @@ scripts/verify-evidence-run.sh evidence/raw/<run-id>
 scripts/verify-all-evidence.sh
 scripts/test-evidence-verifier.sh
 scripts/audit-claim-index.sh
+scripts/verify-article-assets.sh
+scripts/verify-publication.sh
 ```
+
+`scripts/verify-publication.sh` requires at least 301 commits unless
+`LAB_MINIMUM_COMMIT_COUNT` is set deliberately. Add `--require-remote` only
+after `origin` and the current branch's upstream exist; it then requires local
+and tracked remote HEADs to match.
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
 telemetry ports. Generated Xcode projects and downloaded binaries are ignored;
