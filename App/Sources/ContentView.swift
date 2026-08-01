@@ -51,16 +51,12 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Toggle(
-                    "Official persistence decorator",
-                    isOn: Binding(
-                        get: { controller.persistence == .officialDecorator },
-                        set: {
-                            controller.persistence = $0 ? .officialDecorator : .disabled
-                        }
-                    )
-                )
-                .tint(.mint)
+                Picker("Persistence", selection: $controller.persistence) {
+                    Text("None").tag(PersistenceMode.disabled)
+                    Text("Default").tag(PersistenceMode.officialDefault)
+                    Text("Instant").tag(PersistenceMode.officialInstant)
+                }
+                .pickerStyle(.segmented)
 
                 Stepper(value: $controller.plannedSpanCount, in: 10...1_000, step: 10) {
                     HStack {
@@ -85,14 +81,25 @@ struct ContentView: View {
     private var actionCard: some View {
         LabCard(title: "Baseline control", icon: "waveform.path.ecg") {
             VStack(spacing: 12) {
-                Button(action: controller.runDryBurst) {
-                    Label("Record dry burst", systemImage: "bolt.fill")
+                Button(action: controller.runBaselineBurst) {
+                    Label(
+                        controller.isRunning ? "Running…" : "Run baseline burst",
+                        systemImage: "bolt.fill"
+                    )
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.mint)
                 .foregroundStyle(.black)
+                .disabled(controller.isRunning || controller.transport == .grpc)
+
+                if let runID = controller.latestRunID {
+                    Text("Run \(runID.uuidString.lowercased())")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
 
                 Button("Reset", action: controller.reset)
                     .font(.footnote.weight(.semibold))
@@ -103,7 +110,7 @@ struct ContentView: View {
 
     private var evidenceNote: some View {
         Label(
-            "Dry runs do not emit telemetry and never count as experiment evidence.",
+            "Host reconciliation decides delivery; the app never assumes receipt.",
             systemImage: "checkmark.shield"
         )
         .font(.footnote)
@@ -164,4 +171,3 @@ private struct MetricCard: View {
     ContentView()
         .environmentObject(ExperimentController())
 }
-
