@@ -8,5 +8,6 @@ xcuserdata/
 OTelReliabilityLab.xcodeproj/
 evidence/raw/*
 !evidence/raw/.gitkeep
+!evidence/raw/README.md
 collector/bin/
 

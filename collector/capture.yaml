@@ -1,0 +1,36 @@
+extensions:
+  health_check:
+    endpoint: 127.0.0.1:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 200ms
+    send_batch_size: 64
+    send_batch_max_size: 64
+
+exporters:
+  file/evidence:
+    path: ${env:OTEL_LAB_CAPTURE_PATH}
+    format: json
+    append: false
+    flush_interval: 100ms
+    create_directory: true
+  debug/status:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/evidence, debug/status]
+
