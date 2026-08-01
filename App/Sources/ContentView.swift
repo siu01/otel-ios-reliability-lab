@@ -109,6 +109,9 @@ struct ContentView: View {
                 ) {
                     Text("Linear").tag(ByteBudgetPartitionStrategy.linearPrefixEncoding)
                     Text("Binary").tag(ByteBudgetPartitionStrategy.binarySearchEncoding)
+                    Text("Additive").tag(
+                        ByteBudgetPartitionStrategy.incrementalJSONElementEncoding
+                    )
                 }
                 .pickerStyle(.segmented)
                 .disabled(controller.persistenceObjectPolicy == .sdkNative)
