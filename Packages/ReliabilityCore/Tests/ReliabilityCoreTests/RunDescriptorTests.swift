@@ -18,6 +18,7 @@ struct RunDescriptorTests {
             flushTrigger: .background,
             processorScheduleDelayMilliseconds: 5_000,
             maxExportBatchSize: 100,
+            payloadAttributeBytes: 1_536,
             httpClientMode: .instrumentedBase,
             exporterMode: .statelessHTTP
         )
@@ -43,6 +44,7 @@ struct RunDescriptorTests {
         object.removeValue(forKey: "flushTrigger")
         object.removeValue(forKey: "processorScheduleDelayMilliseconds")
         object.removeValue(forKey: "maxExportBatchSize")
+        object.removeValue(forKey: "payloadAttributeBytes")
         object.removeValue(forKey: "httpClientMode")
         object.removeValue(forKey: "exporterMode")
         let legacyData = try JSONSerialization.data(withJSONObject: object)
@@ -53,6 +55,7 @@ struct RunDescriptorTests {
         #expect(decoded.flushTrigger == .afterBurst)
         #expect(decoded.processorScheduleDelayMilliseconds == 250)
         #expect(decoded.maxExportBatchSize == 256)
+        #expect(decoded.payloadAttributeBytes == 0)
         #expect(decoded.httpClientMode == .officialBase)
         #expect(decoded.exporterMode == .officialStateful)
     }

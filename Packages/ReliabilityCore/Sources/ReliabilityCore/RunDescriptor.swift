@@ -11,6 +11,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let flushTrigger: FlushTrigger
     public let processorScheduleDelayMilliseconds: Int
     public let maxExportBatchSize: Int
+    public let payloadAttributeBytes: Int
     public let httpClientMode: HTTPClientMode
     public let exporterMode: ExporterMode
 
@@ -25,6 +26,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         flushTrigger: FlushTrigger = .afterBurst,
         processorScheduleDelayMilliseconds: Int = 250,
         maxExportBatchSize: Int = 256,
+        payloadAttributeBytes: Int = 0,
         httpClientMode: HTTPClientMode = .officialBase,
         exporterMode: ExporterMode = .officialStateful
     ) {
@@ -34,6 +36,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             "A processor schedule delay must be positive"
         )
         precondition(maxExportBatchSize > 0, "A maximum export batch size must be positive")
+        precondition(payloadAttributeBytes >= 0, "Payload attribute bytes cannot be negative")
         self.experimentID = experimentID
         self.runID = runID
         self.plannedSpanCount = plannedSpanCount
@@ -44,6 +47,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.flushTrigger = flushTrigger
         self.processorScheduleDelayMilliseconds = processorScheduleDelayMilliseconds
         self.maxExportBatchSize = maxExportBatchSize
+        self.payloadAttributeBytes = payloadAttributeBytes
         self.httpClientMode = httpClientMode
         self.exporterMode = exporterMode
     }
@@ -59,6 +63,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case flushTrigger
         case processorScheduleDelayMilliseconds
         case maxExportBatchSize
+        case payloadAttributeBytes
         case httpClientMode
         case exporterMode
     }
@@ -100,6 +105,18 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             )
         }
         maxExportBatchSize = decodedMaxExportBatchSize
+        let decodedPayloadAttributeBytes = try container.decodeIfPresent(
+            Int.self,
+            forKey: .payloadAttributeBytes
+        ) ?? 0
+        guard decodedPayloadAttributeBytes >= 0 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .payloadAttributeBytes,
+                in: container,
+                debugDescription: "Payload attribute bytes cannot be negative"
+            )
+        }
+        payloadAttributeBytes = decodedPayloadAttributeBytes
         httpClientMode = try container.decodeIfPresent(
             HTTPClientMode.self,
             forKey: .httpClientMode
@@ -125,6 +142,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             forKey: .processorScheduleDelayMilliseconds
         )
         try container.encode(maxExportBatchSize, forKey: .maxExportBatchSize)
+        try container.encode(payloadAttributeBytes, forKey: .payloadAttributeBytes)
         try container.encode(httpClientMode, forKey: .httpClientMode)
         try container.encode(exporterMode, forKey: .exporterMode)
     }

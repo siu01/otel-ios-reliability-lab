@@ -12,6 +12,7 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let flushTrigger: FlushTrigger?
     public let processorScheduleDelayMilliseconds: Int?
     public let maxExportBatchSize: Int?
+    public let payloadAttributeBytes: Int?
     public let httpClientMode: HTTPClientMode?
     public let exporterMode: ExporterMode?
 
@@ -41,6 +42,9 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
         maxExportBatchSize = Self.value(for: "--lab-max-export-batch-size", in: arguments)
             .flatMap(Int.init)
             .flatMap { $0 > 0 ? $0 : nil }
+        payloadAttributeBytes = Self.value(for: "--lab-payload-bytes", in: arguments)
+            .flatMap(Int.init)
+            .flatMap { $0 >= 0 ? $0 : nil }
         httpClientMode = Self.value(for: "--lab-http-client", in: arguments)
             .flatMap(HTTPClientMode.init(rawValue:))
         exporterMode = Self.value(for: "--lab-exporter", in: arguments)
