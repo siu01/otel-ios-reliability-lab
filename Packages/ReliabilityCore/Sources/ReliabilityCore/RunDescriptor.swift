@@ -12,6 +12,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let processorScheduleDelayMilliseconds: Int
     public let maxExportBatchSize: Int
     public let payloadAttributeBytes: Int
+    public let persistenceObjectPolicy: PersistenceObjectPolicy
+    public let persistenceObjectByteBudget: Int
     public let httpClientMode: HTTPClientMode
     public let exporterMode: ExporterMode
 
@@ -27,6 +29,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         processorScheduleDelayMilliseconds: Int = 250,
         maxExportBatchSize: Int = 256,
         payloadAttributeBytes: Int = 0,
+        persistenceObjectPolicy: PersistenceObjectPolicy = .sdkNative,
+        persistenceObjectByteBudget: Int = 262_144,
         httpClientMode: HTTPClientMode = .officialBase,
         exporterMode: ExporterMode = .officialStateful
     ) {
@@ -37,6 +41,10 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         )
         precondition(maxExportBatchSize > 0, "A maximum export batch size must be positive")
         precondition(payloadAttributeBytes >= 0, "Payload attribute bytes cannot be negative")
+        precondition(
+            persistenceObjectByteBudget > 0,
+            "A persistence object byte budget must be positive"
+        )
         self.experimentID = experimentID
         self.runID = runID
         self.plannedSpanCount = plannedSpanCount
@@ -48,6 +56,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.processorScheduleDelayMilliseconds = processorScheduleDelayMilliseconds
         self.maxExportBatchSize = maxExportBatchSize
         self.payloadAttributeBytes = payloadAttributeBytes
+        self.persistenceObjectPolicy = persistenceObjectPolicy
+        self.persistenceObjectByteBudget = persistenceObjectByteBudget
         self.httpClientMode = httpClientMode
         self.exporterMode = exporterMode
     }
@@ -64,6 +74,8 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case processorScheduleDelayMilliseconds
         case maxExportBatchSize
         case payloadAttributeBytes
+        case persistenceObjectPolicy
+        case persistenceObjectByteBudget
         case httpClientMode
         case exporterMode
     }
@@ -117,6 +129,22 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             )
         }
         payloadAttributeBytes = decodedPayloadAttributeBytes
+        persistenceObjectPolicy = try container.decodeIfPresent(
+            PersistenceObjectPolicy.self,
+            forKey: .persistenceObjectPolicy
+        ) ?? .sdkNative
+        let decodedPersistenceObjectByteBudget = try container.decodeIfPresent(
+            Int.self,
+            forKey: .persistenceObjectByteBudget
+        ) ?? 262_144
+        guard decodedPersistenceObjectByteBudget > 0 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .persistenceObjectByteBudget,
+                in: container,
+                debugDescription: "Persistence object byte budget must be positive"
+            )
+        }
+        persistenceObjectByteBudget = decodedPersistenceObjectByteBudget
         httpClientMode = try container.decodeIfPresent(
             HTTPClientMode.self,
             forKey: .httpClientMode
@@ -143,6 +171,11 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         )
         try container.encode(maxExportBatchSize, forKey: .maxExportBatchSize)
         try container.encode(payloadAttributeBytes, forKey: .payloadAttributeBytes)
+        try container.encode(persistenceObjectPolicy, forKey: .persistenceObjectPolicy)
+        try container.encode(
+            persistenceObjectByteBudget,
+            forKey: .persistenceObjectByteBudget
+        )
         try container.encode(httpClientMode, forKey: .httpClientMode)
         try container.encode(exporterMode, forKey: .exporterMode)
     }
@@ -157,6 +190,11 @@ public enum PersistenceMode: String, Codable, CaseIterable, Sendable {
     case disabled
     case officialDefault
     case officialInstant
+}
+
+public enum PersistenceObjectPolicy: String, Codable, CaseIterable, Sendable {
+    case sdkNative
+    case encodedByteBudget
 }
 
 public enum FlushMode: String, Codable, CaseIterable, Sendable {

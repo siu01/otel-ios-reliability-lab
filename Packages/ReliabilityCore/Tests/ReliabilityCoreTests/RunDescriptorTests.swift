@@ -19,6 +19,8 @@ struct RunDescriptorTests {
             processorScheduleDelayMilliseconds: 5_000,
             maxExportBatchSize: 100,
             payloadAttributeBytes: 1_536,
+            persistenceObjectPolicy: .encodedByteBudget,
+            persistenceObjectByteBudget: 240_000,
             httpClientMode: .instrumentedBase,
             exporterMode: .statelessHTTP
         )
@@ -45,6 +47,8 @@ struct RunDescriptorTests {
         object.removeValue(forKey: "processorScheduleDelayMilliseconds")
         object.removeValue(forKey: "maxExportBatchSize")
         object.removeValue(forKey: "payloadAttributeBytes")
+        object.removeValue(forKey: "persistenceObjectPolicy")
+        object.removeValue(forKey: "persistenceObjectByteBudget")
         object.removeValue(forKey: "httpClientMode")
         object.removeValue(forKey: "exporterMode")
         let legacyData = try JSONSerialization.data(withJSONObject: object)
@@ -56,7 +60,28 @@ struct RunDescriptorTests {
         #expect(decoded.processorScheduleDelayMilliseconds == 250)
         #expect(decoded.maxExportBatchSize == 256)
         #expect(decoded.payloadAttributeBytes == 0)
+        #expect(decoded.persistenceObjectPolicy == .sdkNative)
+        #expect(decoded.persistenceObjectByteBudget == 262_144)
         #expect(decoded.httpClientMode == .officialBase)
         #expect(decoded.exporterMode == .officialStateful)
+    }
+
+    @Test("rejects a non-positive persistence object byte budget")
+    func rejectsInvalidPersistenceObjectByteBudget() throws {
+        let experimentID = try #require(ExperimentID(rawValue: "E014"))
+        let descriptor = RunDescriptor(
+            experimentID: experimentID,
+            plannedSpanCount: 1,
+            transport: .http,
+            persistence: .officialDefault
+        )
+        let encoded = try JSONEncoder().encode(descriptor)
+        var object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object["persistenceObjectByteBudget"] = 0
+        let invalidData = try JSONSerialization.data(withJSONObject: object)
+
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(RunDescriptor.self, from: invalidData)
+        }
     }
 }
