@@ -1,0 +1,8 @@
+{
+  "experimentID" : "E000",
+  "persistence" : "officialDefault",
+  "plannedSpanCount" : 100,
+  "runID" : "00000000-0000-0000-0000-000000000002",
+  "startedAt" : "2026-08-01T11:52:14Z",
+  "transport" : "http"
+}
