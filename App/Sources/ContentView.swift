@@ -60,7 +60,8 @@ struct ContentView: View {
 
                 Picker("Explicit flush", selection: $controller.flushMode) {
                     Text("Disabled").tag(FlushMode.disabled)
-                    Text("Enabled").tag(FlushMode.explicit)
+                    Text("Provider").tag(FlushMode.explicit)
+                    Text("Durable").tag(FlushMode.durabilityBarrier)
                 }
                 .pickerStyle(.segmented)
 

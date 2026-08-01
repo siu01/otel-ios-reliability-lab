@@ -24,6 +24,7 @@ enum TelemetryRuntimeError: LocalizedError {
 final class TelemetryRuntime {
     private var provider: TracerProviderSdk?
     private var tracer: (any Tracer)?
+    private var exporter: (any SpanExporter)?
 
     func configure(for run: RunDescriptor, runEvidenceDirectory: URL) throws {
         guard run.transport == .http else {
@@ -91,6 +92,7 @@ final class TelemetryRuntime {
 
         OpenTelemetry.registerTracerProvider(tracerProvider: provider)
         self.provider = provider
+        self.exporter = exporter
         tracer = provider.get(
             instrumentationName: "dev.siu01.otel-ios-reliability-lab",
             instrumentationVersion: "0.1.0"
@@ -116,8 +118,11 @@ final class TelemetryRuntime {
         span.end()
     }
 
-    func forceFlush(timeout: TimeInterval = 10) {
+    func forceFlush(timeout: TimeInterval = 10, durabilityBarrier: Bool = false) {
         provider?.forceFlush(timeout: timeout)
+        if durabilityBarrier {
+            _ = exporter?.flush(explicitTimeout: timeout)
+        }
     }
 
     private func persistenceDirectory(for mode: PersistenceMode) throws -> URL {

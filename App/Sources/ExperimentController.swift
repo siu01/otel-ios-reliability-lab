@@ -1,4 +1,5 @@
 import Foundation
+import Dispatch
 import ReliabilityCore
 
 @MainActor
@@ -144,14 +145,50 @@ final class ExperimentController: ObservableObject {
                 }
 
                 try evidenceStore.writeGeneratedRecords(generated)
+                try evidenceStore.appendLifecycleEvent(
+                    RunLifecycleEvent(
+                        phase: .generatedLedgerCommitted,
+                        timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                        flushMode: flushMode
+                    )
+                )
                 generatedCount = generated.count
                 receivedCount = 0
-                if flushMode == .explicit {
-                    status = "Flushing exporter"
-                    telemetry.forceFlush()
-                } else {
+                switch flushMode {
+                case .disabled:
                     status = "Leaving export to scheduled workers"
+                case .explicit, .durabilityBarrier:
+                    status = flushMode == .durabilityBarrier
+                        ? "Crossing durability barrier"
+                        : "Flushing provider"
+                    try evidenceStore.appendLifecycleEvent(
+                        RunLifecycleEvent(
+                            phase: .flushStarted,
+                            timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                            flushMode: flushMode
+                        )
+                    )
+                    let flushStarted = DispatchTime.now().uptimeNanoseconds
+                    telemetry.forceFlush(
+                        durabilityBarrier: flushMode == .durabilityBarrier
+                    )
+                    let flushDuration = DispatchTime.now().uptimeNanoseconds - flushStarted
+                    try evidenceStore.appendLifecycleEvent(
+                        RunLifecycleEvent(
+                            phase: .flushCompleted,
+                            timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                            flushMode: flushMode,
+                            durationNanoseconds: Int64(flushDuration)
+                        )
+                    )
                 }
+                try evidenceStore.appendLifecycleEvent(
+                    RunLifecycleEvent(
+                        phase: .burstCompleted,
+                        timestampUnixNanoseconds: Self.currentUnixNanoseconds(),
+                        flushMode: flushMode
+                    )
+                )
                 status = "Burst complete — reconcile on host"
             } catch {
                 status = "Failed: \(error.localizedDescription)"
@@ -166,5 +203,9 @@ final class ExperimentController: ObservableObject {
         latestRunID = nil
         isReconciled = false
         status = "Ready for baseline"
+    }
+
+    private static func currentUnixNanoseconds() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1_000_000_000)
     }
 }
