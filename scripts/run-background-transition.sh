@@ -2,8 +2,8 @@
 set -euo pipefail
 
 if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 && $# -ne 8 && $# -ne 9 \
-    && $# -ne 10 && $# -ne 11 && $# -ne 12 ]]; then
-  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> [<object-policy> [<object-byte-budget> [<partition-strategy>]]]]]]]" >&2
+    && $# -ne 10 && $# -ne 11 && $# -ne 12 && $# -ne 13 ]]; then
+  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> [<object-policy> [<object-byte-budget> [<partition-strategy> [<main-queue-probe>]]]]]]]]" >&2
   exit 64
 fi
 
@@ -19,6 +19,7 @@ payload_attribute_bytes="${9:-0}"
 persistence_object_policy="${10:-sdkNative}"
 persistence_object_byte_budget="${11:-262144}"
 persistence_object_partition_strategy="${12:-linearPrefixEncoding}"
+main_queue_probe="${13:-disabled}"
 
 if [[ ! "$evidence_run_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "invalid evidence run ID" >&2
@@ -79,6 +80,13 @@ case "$persistence_object_partition_strategy" in
   linearPrefixEncoding|binarySearchEncoding) ;;
   *)
     echo "partition strategy must be linearPrefixEncoding or binarySearchEncoding" >&2
+    exit 64
+    ;;
+esac
+case "$main_queue_probe" in
+  disabled|enabled) ;;
+  *)
+    echo "main queue probe must be disabled or enabled" >&2
     exit 64
     ;;
 esac
@@ -184,6 +192,7 @@ printf 'payload_attribute_bytes\t%s\n' "$payload_attribute_bytes" >> "$boundary_
 printf 'persistence_object_policy\t%s\n' "$persistence_object_policy" >> "$boundary_log"
 printf 'persistence_object_byte_budget\t%s\n' "$persistence_object_byte_budget" >> "$boundary_log"
 printf 'persistence_object_partition_strategy\t%s\n' "$persistence_object_partition_strategy" >> "$boundary_log"
+printf 'main_queue_probe\t%s\n' "$main_queue_probe" >> "$boundary_log"
 printf 'background_app\t%s\n' "$background_bundle_id" >> "$boundary_log"
 printf 'stop_mechanism\tdirect_sigkill\n' >> "$boundary_log"
 printf 'artifact\tsha256\n' > "$digest_log"
@@ -220,6 +229,7 @@ xcrun simctl launch \
   "--lab-persistence-object-policy=$persistence_object_policy" \
   "--lab-persistence-object-byte-budget=$persistence_object_byte_budget" \
   "--lab-persistence-object-partition-strategy=$persistence_object_partition_strategy" \
+  "--lab-main-queue-probe=$main_queue_probe" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$first_launch_log"
 record_timing first_launch_returned
@@ -408,6 +418,7 @@ xcrun simctl launch \
   "--lab-persistence-object-policy=$persistence_object_policy" \
   "--lab-persistence-object-byte-budget=$persistence_object_byte_budget" \
   "--lab-persistence-object-partition-strategy=$persistence_object_partition_strategy" \
+  "--lab-main-queue-probe=$main_queue_probe" \
   --lab-http-client=instrumentedBase \
   --lab-exporter=statelessHTTP > "$resume_launch_log"
 record_timing resume_launch_returned
