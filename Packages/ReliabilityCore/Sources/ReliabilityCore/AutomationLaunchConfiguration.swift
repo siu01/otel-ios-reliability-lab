@@ -9,6 +9,7 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let persistence: PersistenceMode?
     public let flushMode: FlushMode?
     public let httpClientMode: HTTPClientMode?
+    public let exporterMode: ExporterMode?
 
     public init(arguments: [String]) {
         shouldAutorun = arguments.contains("--lab-autorun")
@@ -26,6 +27,8 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
             .flatMap(FlushMode.init(rawValue:))
         httpClientMode = Self.value(for: "--lab-http-client", in: arguments)
             .flatMap(HTTPClientMode.init(rawValue:))
+        exporterMode = Self.value(for: "--lab-exporter", in: arguments)
+            .flatMap(ExporterMode.init(rawValue:))
     }
 
     private static func value(for key: String, in arguments: [String]) -> String? {
