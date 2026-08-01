@@ -84,6 +84,9 @@ for the pinned Swift SDK:
 - E016: the synchronous background callback delayed an already-enqueued
   main-queue probe for 297–1,271 ms. Provider flush timing understated that
   delay by 224–303 ms; all four conditions still recovered 500/500 exactly.
+- E017 pre-runtime: additive JSON sizing matched exact binary partitions across
+  200 deterministic heterogeneous cases and reduced synthetic encoded-output
+  work by 73.5%; the registered Simulator matrix remains pending.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -109,6 +112,8 @@ and its search-cost intervention in
 [`experiments/E015-byte-policy-search-cost/results.md`](experiments/E015-byte-policy-search-cost/results.md).
 The direct main-queue probe is summarized in
 [`experiments/E016-main-queue-flush-stall/results.md`](experiments/E016-main-queue-flush-stall/results.md).
+The guarded additive JSON optimization and its runtime limits are summarized in
+[`experiments/E017-additive-json-partition/results.md`](experiments/E017-additive-json-partition/results.md).
 
 No reliability claim is valid until its experiment has a committed plan, raw
 evidence, and reconciliation report.
@@ -135,9 +140,10 @@ scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> \
   [<experiment-id> <span-count> \
   [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> \
   [<sdkNative-or-encodedByteBudget> [<object-byte-budget> \
-  [<linearPrefixEncoding-or-binarySearchEncoding> \
+  [<linearPrefixEncoding-or-binarySearchEncoding-or-incrementalJSONElementEncoding> \
   [<disabled-or-enabled-main-queue-probe>]]]]]]]]
 scripts/summarize-main-queue-probes.sh evidence/raw/<run-id> [...]
+scripts/run-partition-cost.sh <element-count> <payload-bytes> <byte-budget>
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -165,3 +171,4 @@ their sources of truth are `project.yml` and the pinned installer.
 | E014 | Can a byte-aware policy recover batches and surface indivisible loss? | Complete: 100/500-span losses recovered exactly; single oversize recorded explicitly; linear search cost up to 7.04 s |
 | E015 | Can exact byte partitioning fit a mobile background budget? | Complete: binary search preserved delivery and cut matched flushes by 85–93% to 135–540 ms |
 | E016 | Does synchronous background flush stall the main queue? | Complete: queued work resumed after 297–1,271 ms; flush duration omitted another 224–303 ms; delivery remained 500/500 |
+| E017 | Can one encode per JSON element preserve exact byte boundaries with less work? | Pre-runtime complete: 200 heterogeneous cases matched; synthetic encoded output fell 73.5%; Simulator matrix pending |
