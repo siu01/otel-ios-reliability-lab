@@ -65,6 +65,12 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
 
+                Picker("Flush trigger", selection: $controller.flushTrigger) {
+                    Text("After burst").tag(FlushTrigger.afterBurst)
+                    Text("Background").tag(FlushTrigger.background)
+                }
+                .pickerStyle(.segmented)
+
                 Picker("HTTP evidence", selection: $controller.httpClientMode) {
                     Text("Official").tag(HTTPClientMode.officialBase)
                     Text("Instrumented").tag(HTTPClientMode.instrumentedBase)
@@ -82,6 +88,19 @@ struct ContentView: View {
                         Text("Planned spans")
                         Spacer()
                         Text(controller.plannedSpanCount.formatted())
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                }
+
+                Stepper(
+                    value: $controller.processorScheduleDelayMilliseconds,
+                    in: 50...10_000,
+                    step: 50
+                ) {
+                    HStack {
+                        Text("Batch delay")
+                        Spacer()
+                        Text("\(controller.processorScheduleDelayMilliseconds) ms")
                             .font(.body.monospacedDigit().weight(.semibold))
                     }
                 }
