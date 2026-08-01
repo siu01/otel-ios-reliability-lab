@@ -2,8 +2,9 @@
 set -euo pipefail
 
 if [[ $# -ne 4 && $# -ne 6 && $# -ne 7 && $# -ne 8 && $# -ne 9 \
-    && $# -ne 10 && $# -ne 11 && $# -ne 12 && $# -ne 13 ]]; then
-  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> [<object-policy> [<object-byte-budget> [<partition-strategy> [<main-queue-probe>]]]]]]]]" >&2
+    && $# -ne 10 && $# -ne 11 && $# -ne 12 && $# -ne 13 \
+    && $# -ne 14 && $# -ne 15 ]]; then
+  echo "usage: scripts/run-background-transition.sh <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [<experiment-id> <span-count> [<schedule-delay-ms> [<max-export-batch-size> [<payload-bytes> [<object-policy> [<object-byte-budget> [<partition-strategy> [<main-queue-probe> [<secondary-payload-bytes> [<payload-pattern>]]]]]]]]]]" >&2
   exit 64
 fi
 
@@ -20,6 +21,8 @@ persistence_object_policy="${10:-sdkNative}"
 persistence_object_byte_budget="${11:-262144}"
 persistence_object_partition_strategy="${12:-linearPrefixEncoding}"
 main_queue_probe="${13:-disabled}"
+secondary_payload_attribute_bytes="${14:-0}"
+payload_attribute_pattern="${15:-constant}"
 
 if [[ ! "$evidence_run_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "invalid evidence run ID" >&2
@@ -64,6 +67,18 @@ if [[ ! "$payload_attribute_bytes" =~ ^[0-9]+$ ]] || (( payload_attribute_bytes 
   echo "payload attribute bytes must be an integer from 0 through 524288" >&2
   exit 64
 fi
+if [[ ! "$secondary_payload_attribute_bytes" =~ ^[0-9]+$ ]] \
+    || (( secondary_payload_attribute_bytes > 524288 )); then
+  echo "secondary payload attribute bytes must be an integer from 0 through 524288" >&2
+  exit 64
+fi
+case "$payload_attribute_pattern" in
+  constant|alternatingPrimarySecondary|groupedPrimaryFirst|groupedSecondaryFirst) ;;
+  *)
+    echo "payload pattern is invalid" >&2
+    exit 64
+    ;;
+esac
 case "$persistence_object_policy" in
   sdkNative|encodedByteBudget) ;;
   *)
@@ -193,6 +208,8 @@ printf 'flush_trigger\tbackground\n' >> "$boundary_log"
 printf 'processor_schedule_delay_milliseconds\t%s\n' "$schedule_delay_milliseconds" >> "$boundary_log"
 printf 'max_export_batch_size\t%s\n' "$max_export_batch_size" >> "$boundary_log"
 printf 'payload_attribute_bytes\t%s\n' "$payload_attribute_bytes" >> "$boundary_log"
+printf 'secondary_payload_attribute_bytes\t%s\n' "$secondary_payload_attribute_bytes" >> "$boundary_log"
+printf 'payload_attribute_pattern\t%s\n' "$payload_attribute_pattern" >> "$boundary_log"
 printf 'persistence_object_policy\t%s\n' "$persistence_object_policy" >> "$boundary_log"
 printf 'persistence_object_byte_budget\t%s\n' "$persistence_object_byte_budget" >> "$boundary_log"
 printf 'persistence_object_partition_strategy\t%s\n' "$persistence_object_partition_strategy" >> "$boundary_log"
@@ -230,6 +247,8 @@ xcrun simctl launch \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
   "--lab-max-export-batch-size=$max_export_batch_size" \
   "--lab-payload-bytes=$payload_attribute_bytes" \
+  "--lab-secondary-payload-bytes=$secondary_payload_attribute_bytes" \
+  "--lab-payload-pattern=$payload_attribute_pattern" \
   "--lab-persistence-object-policy=$persistence_object_policy" \
   "--lab-persistence-object-byte-budget=$persistence_object_byte_budget" \
   "--lab-persistence-object-partition-strategy=$persistence_object_partition_strategy" \
@@ -482,6 +501,8 @@ xcrun simctl launch \
   "--lab-schedule-delay-ms=$schedule_delay_milliseconds" \
   "--lab-max-export-batch-size=$max_export_batch_size" \
   "--lab-payload-bytes=$payload_attribute_bytes" \
+  "--lab-secondary-payload-bytes=$secondary_payload_attribute_bytes" \
+  "--lab-payload-pattern=$payload_attribute_pattern" \
   "--lab-persistence-object-policy=$persistence_object_policy" \
   "--lab-persistence-object-byte-budget=$persistence_object_byte_budget" \
   "--lab-persistence-object-partition-strategy=$persistence_object_partition_strategy" \
