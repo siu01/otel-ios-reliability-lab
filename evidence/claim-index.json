@@ -1,0 +1,233 @@
+[
+  {
+    "id": "E000",
+    "state": "runtimeComplete",
+    "claim": "Connected HTTP controls delivered 100 of 100 exactly once in all three persistence modes.",
+    "experimentDirectory": "experiments/E000-baseline",
+    "planPath": "experiments/E000-baseline/README.md",
+    "resultsPath": "experiments/E000-baseline/README.md",
+    "rawEvidencePrefix": "E000-",
+    "articleIncluded": true,
+    "limitation": "Connected Simulator control only."
+  },
+  {
+    "id": "E001",
+    "state": "runtimeComplete",
+    "claim": "An eight-second outage separated loss, exact recovery, and duplicated recovery by persistence mode.",
+    "experimentDirectory": "experiments/E001-late-collector",
+    "planPath": "experiments/E001-late-collector/plan.md",
+    "resultsPath": "experiments/E001-late-collector/results.md",
+    "rawEvidencePrefix": "E001-",
+    "articleIncluded": true,
+    "limitation": "One local outage schedule on Simulator."
+  },
+  {
+    "id": "E002",
+    "state": "runtimeComplete",
+    "claim": "Instant-preset duplication remained without an explicit flush.",
+    "experimentDirectory": "experiments/E002-no-explicit-flush",
+    "planPath": "experiments/E002-no-explicit-flush/plan.md",
+    "resultsPath": "experiments/E002-no-explicit-flush/results.md",
+    "rawEvidencePrefix": "E002-",
+    "articleIncluded": true,
+    "limitation": "Non-measured replication of the E001 mechanism."
+  },
+  {
+    "id": "E003",
+    "state": "runtimeComplete",
+    "claim": "Delivered multiplicity equaled completed HTTP failures plus one in the tested matrix.",
+    "experimentDirectory": "experiments/E003-http-attempt-amplification",
+    "planPath": "experiments/E003-http-attempt-amplification/plan.md",
+    "resultsPath": "experiments/E003-http-attempt-amplification/results.md",
+    "rawEvidencePrefix": "E003-",
+    "articleIncluded": true,
+    "limitation": "Observed with the pinned stateful HTTP exporter."
+  },
+  {
+    "id": "E004",
+    "state": "runtimeComplete",
+    "claim": "A stateless HTTP exporter left persistence as the single retry owner and removed amplification.",
+    "experimentDirectory": "experiments/E004-single-retry-owner",
+    "planPath": "experiments/E004-single-retry-owner/plan.md",
+    "resultsPath": "experiments/E004-single-retry-owner/results.md",
+    "rawEvidencePrefix": "E004-",
+    "articleIncluded": true,
+    "limitation": "Prototype exporter lacks full production features."
+  },
+  {
+    "id": "E005",
+    "state": "runtimeComplete",
+    "claim": "A complete persistence file recovered 100 spans exactly from a new process.",
+    "experimentDirectory": "experiments/E005-process-relaunch",
+    "planPath": "experiments/E005-process-relaunch/plan.md",
+    "resultsPath": "experiments/E005-process-relaunch/results.md",
+    "rawEvidencePrefix": "E005-",
+    "articleIncluded": true,
+    "limitation": "Controlled termination after observing a complete file."
+  },
+  {
+    "id": "E006",
+    "state": "runtimeComplete",
+    "claim": "Ended spans before an observable persistence file recovered zero; complete files recovered all.",
+    "experimentDirectory": "experiments/E006-write-boundary",
+    "planPath": "experiments/E006-write-boundary/plan.md",
+    "resultsPath": "experiments/E006-write-boundary/results.md",
+    "rawEvidencePrefix": "E006-",
+    "articleIncluded": true,
+    "limitation": "Direct Simulator SIGKILL is not device jetsam."
+  },
+  {
+    "id": "E007",
+    "state": "runtimeComplete",
+    "claim": "Provider force flush crossed the measured durability boundary and changed recovery from zero to all.",
+    "experimentDirectory": "experiments/E007-flush-barrier",
+    "planPath": "experiments/E007-flush-barrier/plan.md",
+    "resultsPath": "experiments/E007-flush-barrier/results.md",
+    "rawEvidencePrefix": "E007-",
+    "articleIncluded": true,
+    "limitation": "Synthetic flush trigger rather than SwiftUI lifecycle."
+  },
+  {
+    "id": "E008",
+    "state": "runtimeComplete",
+    "claim": "A real SwiftUI background flush changed both presets from zero of 100 to 100 of 100.",
+    "experimentDirectory": "experiments/E008-background-transition",
+    "planPath": "experiments/E008-background-transition/plan.md",
+    "resultsPath": "experiments/E008-background-transition/results.md",
+    "rawEvidencePrefix": "E008-",
+    "articleIncluded": true,
+    "limitation": "One Simulator background window."
+  },
+  {
+    "id": "E009",
+    "state": "runtimeComplete",
+    "claim": "Scaling exposed silent loss at the persistence object's 256-KiB limit.",
+    "experimentDirectory": "experiments/E009-background-flush-scale",
+    "planPath": "experiments/E009-background-flush-scale/plan.md",
+    "resultsPath": "experiments/E009-background-flush-scale/results.md",
+    "rawEvidencePrefix": "E009-",
+    "articleIncluded": true,
+    "limitation": "Pinned SDK representation and single runs."
+  },
+  {
+    "id": "E010",
+    "state": "runtimeComplete",
+    "claim": "Reducing export batch size to 100 recovered exact 500- and 1000-span workloads.",
+    "experimentDirectory": "experiments/E010-safe-export-chunk",
+    "planPath": "experiments/E010-safe-export-chunk/plan.md",
+    "resultsPath": "experiments/E010-safe-export-chunk/results.md",
+    "rawEvidencePrefix": "E010-",
+    "articleIncluded": true,
+    "limitation": "Count 100 is payload-dependent, not universally safe."
+  },
+  {
+    "id": "E011",
+    "state": "runtimeComplete",
+    "claim": "Increasing one attribute from 1024 to 1536 bytes changed batch 100 from complete to silent total loss.",
+    "experimentDirectory": "experiments/E011-payload-size-boundary",
+    "planPath": "experiments/E011-payload-size-boundary/plan.md",
+    "resultsPath": "experiments/E011-payload-size-boundary/results.md",
+    "rawEvidencePrefix": "E011-",
+    "articleIncluded": true,
+    "limitation": "One uniform synthetic string attribute."
+  },
+  {
+    "id": "E012",
+    "state": "runtimeComplete",
+    "claim": "Splitting the same payload-heavy data into 50-span objects restored exact delivery.",
+    "experimentDirectory": "experiments/E012-payload-chunk-recovery",
+    "planPath": "experiments/E012-payload-chunk-recovery/plan.md",
+    "resultsPath": "experiments/E012-payload-chunk-recovery/results.md",
+    "rawEvidencePrefix": "E012-",
+    "articleIncluded": true,
+    "limitation": "Fixed count remains schema-dependent."
+  },
+  {
+    "id": "E013",
+    "state": "runtimeComplete",
+    "claim": "A single 256-KiB payload was silently lost even with processor batch one.",
+    "experimentDirectory": "experiments/E013-single-span-oversize",
+    "planPath": "experiments/E013-single-span-oversize/plan.md",
+    "resultsPath": "experiments/E013-single-span-oversize/results.md",
+    "rawEvidencePrefix": "E013-",
+    "articleIncluded": true,
+    "limitation": "Synthetic payload and pinned encoding only."
+  },
+  {
+    "id": "E014",
+    "state": "runtimeComplete",
+    "claim": "An SDK-external byte policy recovered splittable loss and made indivisible oversize explicit.",
+    "experimentDirectory": "experiments/E014-byte-aware-policy",
+    "planPath": "experiments/E014-byte-aware-policy/plan.md",
+    "resultsPath": "experiments/E014-byte-aware-policy/results.md",
+    "rawEvidencePrefix": "E014-",
+    "articleIncluded": true,
+    "limitation": "Linear exact encoding cost reached seven seconds."
+  },
+  {
+    "id": "E015",
+    "state": "runtimeComplete",
+    "claim": "Binary search retained exact partitions while cutting matched flush cost by 85 to 93 percent.",
+    "experimentDirectory": "experiments/E015-byte-policy-search-cost",
+    "planPath": "experiments/E015-byte-policy-search-cost/plan.md",
+    "resultsPath": "experiments/E015-byte-policy-search-cost/results.md",
+    "rawEvidencePrefix": "E015-",
+    "articleIncluded": true,
+    "limitation": "Still repeatedly encodes large prefixes on the main actor."
+  },
+  {
+    "id": "E016",
+    "state": "runtimeComplete",
+    "claim": "Already-enqueued main-queue work resumed 224 to 303 ms after measured provider flush duration.",
+    "experimentDirectory": "experiments/E016-main-queue-flush-stall",
+    "planPath": "experiments/E016-main-queue-flush-stall/plan.md",
+    "resultsPath": "experiments/E016-main-queue-flush-stall/results.md",
+    "rawEvidencePrefix": "E016-",
+    "articleIncluded": true,
+    "limitation": "Queued-work delay in background is not visible frame latency."
+  },
+  {
+    "id": "E017",
+    "state": "runtimePending",
+    "claim": "Additive JSON sizing matched binary in core and reduced synthetic encoded-output work 73.5 percent.",
+    "experimentDirectory": "experiments/E017-additive-json-partition",
+    "planPath": "experiments/E017-additive-json-partition/plan.md",
+    "resultsPath": "experiments/E017-additive-json-partition/results.md",
+    "rawEvidencePrefix": "E017-",
+    "articleIncluded": false,
+    "limitation": "iOS build and registered Simulator delivery runs are pending."
+  },
+  {
+    "id": "E018",
+    "state": "runtimePending",
+    "claim": "The same mixed synthetic payload multiset used 10 objects when alternating and 15 when grouped.",
+    "experimentDirectory": "experiments/E018-payload-order-fragmentation",
+    "planPath": "experiments/E018-payload-order-fragmentation/plan.md",
+    "resultsPath": "experiments/E018-payload-order-fragmentation/results.md",
+    "rawEvidencePrefix": "E018-",
+    "articleIncluded": false,
+    "limitation": "Actual SpanData runtime shape and delivery remain pending."
+  },
+  {
+    "id": "E019",
+    "state": "modelComplete",
+    "claim": "Byte partitioning cannot pack across upstream export-call boundaries.",
+    "experimentDirectory": "experiments/E019-processor-boundary-fragmentation",
+    "planPath": "experiments/E019-processor-boundary-fragmentation/plan.md",
+    "resultsPath": "experiments/E019-processor-boundary-fragmentation/results.md",
+    "rawEvidencePrefix": "E019-",
+    "articleIncluded": false,
+    "limitation": "Exact synthetic JSON model, not a new iOS run."
+  },
+  {
+    "id": "E020",
+    "state": "modelComplete",
+    "claim": "Manifest verification detects isolated evidence corruption but not coordinated data-plus-digest rewrite.",
+    "experimentDirectory": "experiments/E020-evidence-integrity",
+    "planPath": "experiments/E020-evidence-integrity/plan.md",
+    "resultsPath": "experiments/E020-evidence-integrity/results.md",
+    "rawEvidencePrefix": "E020-",
+    "articleIncluded": false,
+    "limitation": "Integrity does not prove observation truthfulness or authorship."
+  }
+]
