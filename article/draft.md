@@ -29,6 +29,9 @@ published: false
 そこで実際のSwiftUI background通知からforceFlushしたところ、45〜52msで
 ファイルへ渡り、同じabrupt restartを0件から100件へ変えられた。
 
+ところが同じ対策を500 Spanへ増やすと、forceFlushは完了したのに両presetとも
+回収0件になった。1,000 Spanでは先頭768件が消え、末尾232件だけが残った。
+
 欠損を0にすることと、重複を0にすることは別問題だった。
 
 ## 先に見つかった意外なもの
@@ -342,6 +345,47 @@ Instantの同期writerであっても、上流batchから呼ばれなければ�
 suspension deadlineやjetsamまで保証するものではない。100 Span・Simulator・
 各1 runのmechanism proofとして扱う。
 
+## E009：flush完了なのに、500件では0件になった
+
+E008の成功が100 Span専用の偶然でないかを確認するため、実background flushを
+100、500、1,000 Spanへ増やした。最初のrunではSimulatorのbackground通知が
+5秒scheduleより遅れたため、証跡を残して除外した。以後はscheduleを15秒へ広げ、
+アプリ内timestampでbackgroundがその前に来たことをrunnerが検査する。
+
+結果は単純な性能劣化ではなかった。
+
+| Persistence | Planned | Flush duration | 終了前file | 再起動後received |
+|---|---:|---:|---:|---:|
+| Default | 100 | 111.96ms | 107,791 bytes | 100/100 |
+| Default | 500 | 167.32ms | 0 | 0/500 |
+| Default | 1,000 | 289.89ms | 250,297 bytes | 232/1,000 |
+| Instant | 100 | 208.35ms | 107,785 bytes | 100/100 |
+| Instant | 500 | 196.76ms | 0 | 0/500 |
+| Instant | 1,000 | 220.38ms | 250,307 bytes | 232/1,000 |
+
+![E009でforceFlush完了後も500件が全損し、1000件は末尾232件だけ残った比較図](./assets/e009-silent-size-loss.png)
+
+全条件でprovider forceFlushは1秒以内に完了扱いになった。最初のプロセスのHTTP
+attemptは0で、DefaultとInstantの結果も完全に一致した。非同期writerの速さでは
+説明できない。
+
+固定したソースを追うと、別単位の上限が衝突していた。
+
+1. labの`BatchSpanProcessor.maxExportBatchSize`は256 Span。
+2. processorは1,000件を`256 + 256 + 256 + 232`に分割する。
+3. Persistence Exporterは各chunk全体を1個のJSON objectへencodeする。
+4. 両presetの`maxObjectSize`は256 KiB。
+5. objectが上限を超えるとwriter内部で例外になるが、空の`catch {}`で消える。
+6. 外側のPersistence exporterは`.success`を返し、processorはchunkを戻さない。
+
+これでsequenceまで説明できる。1,000件runで消えたのは1〜768、残ったのは
+769〜1,000だった。256件chunk 3個はbyte上限を超え、最後の232件だけが約250KBの
+fileへ入った。500件は`256 + 244`の両objectが上限を超え、file自体が0だった。
+
+危険なのは、失敗が遅いことではなく成功に見えることだ。flush durationを測るだけ
+では、このsilent lossを発見できなかった。安全なSpan件数も普遍的ではない。
+attributeが長くなれば、同じ256件でもencoded byteは増える。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
@@ -364,6 +408,10 @@ E008ではその制御を実際の`scenePhase.background`へ移しても、両pr
 100/100へ変わった。「backgroundへ行くから失う」を完全に不可避とせず、利用可能な
 lifecycle windowで耐久境界を越える、という介入にできた。
 
+ただしE009で、その介入はbatch objectが内部byte上限へ収まる場合に限られると
+分かった。次の「可能にする」は、count-based chunkを安全側へ小さくし、500/1,000
+件の0/232を100%へ戻せるかである。
+
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
 正しくretryしても、組み合わせ全体が望むsemanticsになるとは限らない。
@@ -377,12 +425,14 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
 - retryの所有者を1層にする（mechanism proof済み）。
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
 - `scenePhase.background`でbatch queueをflushする（Simulatorでmechanism proof済み）。
+- `maxExportBatchSize`をencoded objectのbyte上限から安全側へ決める。
+- oversizeを握りつぶさず、metric・log・export failureとして可視化する。
 - batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次は100件を超えるbatchでbackground flush時間とUI応答性を比較し、実用上の
-トレードオフを測る必要がある。
+次は小さいexport chunkで同じ500/1,000件を回収できるかを先に検証し、その後に
+background flush時間とUI応答性のトレードオフを測る必要がある。
 
 ## 試行錯誤も証跡に残す
 
@@ -399,7 +449,7 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
 - iPhone 17 Simulator / iOS 26.4.1。
 - `opentelemetry-swift` 2.5.0、core 2.5.1。
 - `otelcol` 0.157.0。
-- loopbackの接続拒否、OTLP/HTTP protobuf、100 Span。
+- loopbackの接続拒否、OTLP/HTTP protobuf、100〜1,000 Span。
 - 各停止時間は1 run。ただし8秒3倍は非計測E002でも独立再現した。
 - 再起動試験は`simctl terminate`による制御された終了であり、ファイル観測後に
   実行した。
@@ -413,6 +463,7 @@ SDK全バージョン、実端末、すべてのネットワーク障害へ一�
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
+- `maxExportBatchSize=100`で500/1,000 Spanを全件回収できるか。
 - lifecycle flush中のmain-thread応答性とenergy costは何か。
 - 実端末でbackground flushがsuspension前に完了するか。途中で止めると何件残るか。
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
@@ -443,6 +494,11 @@ E008ではその最小介入を実際の`scenePhase.background`から呼んだ�
 両presetとも0/100、flushありは45〜52msでfileへ到達し100/100だった。永続化の
 種類より前に、上流batchをいつ永続化層へ渡すかが生存率を決めた。
 
+しかしE009で500/1,000 Spanへ増やすと、別の境界が現れた。Span数で256件ずつ
+切ったencoded objectが256 KiBを超え、writerはerrorを外へ返さなかった。
+forceFlush完了後でも500件は0、1,000件は末尾232件だけになった。APIの成功と
+データの耐久化は、この条件では同じ意味ではなかった。
+
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
-渡るかまで測る必要がある。
+渡るか、1 objectが内部byte上限へ収まるかまで測る必要がある。
