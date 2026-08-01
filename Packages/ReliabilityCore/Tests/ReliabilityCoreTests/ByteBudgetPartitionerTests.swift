@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import ReliabilityCore
 
@@ -100,6 +101,79 @@ struct ByteBudgetPartitionerTests {
         #expect(invocationCount < 30)
     }
 
+    @Test("incremental JSON encoding matches exact maximal prefixes")
+    func incrementalJSONMatchesExactStrategies() throws {
+        let elements = ["a", "bbbb", "🙂", String(repeating: "z", count: 18), "end"]
+        let budget = 24
+        let exactCount: ([String]) throws -> Int = { values in
+            var data = try JSONEncoder().encode(values)
+            data.append(0x2C)
+            return data.count
+        }
+        let elementCount: (String) throws -> Int = { value in
+            try JSONEncoder().encode(value).count
+        }
+
+        let binary = try stringDecisionSnapshot(ByteBudgetPartitioner(
+            byteBudget: budget,
+            strategy: .binarySearchEncoding
+        ).partition(elements, encodedByteCount: exactCount))
+        let incremental = try stringDecisionSnapshot(ByteBudgetPartitioner(
+            byteBudget: budget,
+            strategy: .incrementalJSONElementEncoding
+        ).partition(
+            elements,
+            encodedByteCount: exactCount,
+            encodedElementByteCount: elementCount
+        ))
+
+        #expect(incremental == binary)
+    }
+
+    @Test("incremental JSON strategy requires an element encoder")
+    func incrementalJSONRequiresElementEncoder() {
+        #expect(throws: ByteBudgetPartitionerError.missingEncodedElementByteCount) {
+            try ByteBudgetPartitioner(
+                byteBudget: 10,
+                strategy: .incrementalJSONElementEncoding
+            ).partition([1], encodedByteCount: { $0.reduce(0, +) })
+        }
+    }
+
+    @Test("incremental JSON fails closed when collection encoding is not additive")
+    func incrementalJSONRejectsShapeMismatch() {
+        #expect(throws: ByteBudgetPartitionerError.additiveEncodingMismatch(
+            estimated: 7,
+            actual: 8,
+            elementCount: 2
+        )) {
+            try ByteBudgetPartitioner(
+                byteBudget: 10,
+                strategy: .incrementalJSONElementEncoding
+            ).partition(
+                [1, 2],
+                encodedByteCount: { values in
+                    values.reduce(0, +) + (values.count == 1 ? 3 : 5)
+                },
+                encodedElementByteCount: { $0 }
+            )
+        }
+    }
+
+    @Test("incremental JSON reports byte-count overflow")
+    func incrementalJSONReportsOverflow() {
+        #expect(throws: ByteBudgetPartitionerError.encodedByteCountOverflow) {
+            try ByteBudgetPartitioner(
+                byteBudget: 10,
+                strategy: .incrementalJSONElementEncoding
+            ).partition(
+                [1],
+                encodedByteCount: { _ in 1 },
+                encodedElementByteCount: { _ in Int.max }
+            )
+        }
+    }
+
     private func acceptedChunk<Element>(
         at index: Int,
         in decisions: [ByteBudgetDecision<Element>]
@@ -124,6 +198,19 @@ struct ByteBudgetPartitionerTests {
 
     private func decisionSnapshot(
         _ decisions: [ByteBudgetDecision<Int>]
+    ) throws -> [String] {
+        decisions.map { decision in
+            switch decision {
+            case .accepted(let chunk):
+                "accepted:\(chunk.elements):\(chunk.encodedByteCount)"
+            case .rejected(let rejection):
+                "rejected:\(rejection.element):\(rejection.encodedByteCount)"
+            }
+        }
+    }
+
+    private func stringDecisionSnapshot(
+        _ decisions: [ByteBudgetDecision<String>]
     ) throws -> [String] {
         decisions.map { decision in
             switch decision {

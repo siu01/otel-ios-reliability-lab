@@ -25,6 +25,9 @@ public enum ByteBudgetDecision<Element> {
 
 public enum ByteBudgetPartitionerError: Error, Equatable {
     case invalidEncodedByteCount(Int)
+    case missingEncodedElementByteCount
+    case encodedByteCountOverflow
+    case additiveEncodingMismatch(estimated: Int, actual: Int, elementCount: Int)
 }
 
 public struct ByteBudgetPartitioner: Sendable {
@@ -42,14 +45,97 @@ public struct ByteBudgetPartitioner: Sendable {
 
     public func partition<Element>(
         _ elements: [Element],
-        encodedByteCount: ([Element]) throws -> Int
+        encodedByteCount: ([Element]) throws -> Int,
+        encodedElementByteCount: ((Element) throws -> Int)? = nil
     ) throws -> [ByteBudgetDecision<Element>] {
         switch strategy {
         case .linearPrefixEncoding:
-            try partitionLinearly(elements, encodedByteCount: encodedByteCount)
+            return try partitionLinearly(elements, encodedByteCount: encodedByteCount)
         case .binarySearchEncoding:
-            try partitionWithBinarySearch(elements, encodedByteCount: encodedByteCount)
+            return try partitionWithBinarySearch(elements, encodedByteCount: encodedByteCount)
+        case .incrementalJSONElementEncoding:
+            guard let encodedElementByteCount else {
+                throw ByteBudgetPartitionerError.missingEncodedElementByteCount
+            }
+            return try partitionIncrementally(
+                elements,
+                encodedByteCount: encodedByteCount,
+                encodedElementByteCount: encodedElementByteCount
+            )
         }
+    }
+
+    private func partitionIncrementally<Element>(
+        _ elements: [Element],
+        encodedByteCount: ([Element]) throws -> Int,
+        encodedElementByteCount: (Element) throws -> Int
+    ) throws -> [ByteBudgetDecision<Element>] {
+        var decisions: [ByteBudgetDecision<Element>] = []
+        var currentElements: [Element] = []
+        var currentEstimatedByteCount = 0
+
+        for element in elements {
+            let elementByteCount = try validatedByteCount(
+                encodedElementByteCount(element)
+            )
+            let candidateByteCount: Int
+            if currentElements.isEmpty {
+                candidateByteCount = try checkedSum(elementByteCount, 3)
+            } else {
+                candidateByteCount = try checkedSum(
+                    currentEstimatedByteCount,
+                    1,
+                    elementByteCount
+                )
+            }
+
+            if candidateByteCount <= byteBudget {
+                currentElements.append(element)
+                currentEstimatedByteCount = candidateByteCount
+                continue
+            }
+
+            if !currentElements.isEmpty {
+                decisions.append(.accepted(try validatedAdditiveChunk(
+                    currentElements,
+                    estimatedByteCount: currentEstimatedByteCount,
+                    encodedByteCount: encodedByteCount
+                )))
+            }
+
+            let singleElements = [element]
+            let singleEstimatedByteCount = try checkedSum(elementByteCount, 3)
+            let singleActualByteCount = try validatedByteCount(
+                encodedByteCount(singleElements)
+            )
+            try validateAdditiveEstimate(
+                singleEstimatedByteCount,
+                actualByteCount: singleActualByteCount,
+                elementCount: 1
+            )
+
+            if singleActualByteCount <= byteBudget {
+                currentElements = singleElements
+                currentEstimatedByteCount = singleActualByteCount
+            } else {
+                decisions.append(.rejected(ByteBudgetRejection(
+                    element: element,
+                    encodedByteCount: singleActualByteCount
+                )))
+                currentElements = []
+                currentEstimatedByteCount = 0
+            }
+        }
+
+        if !currentElements.isEmpty {
+            decisions.append(.accepted(try validatedAdditiveChunk(
+                currentElements,
+                estimatedByteCount: currentEstimatedByteCount,
+                encodedByteCount: encodedByteCount
+            )))
+        }
+
+        return decisions
     }
 
     private func partitionLinearly<Element>(
@@ -161,8 +247,47 @@ public struct ByteBudgetPartitioner: Sendable {
         }
         return byteCount
     }
+
+    private func validatedAdditiveChunk<Element>(
+        _ elements: [Element],
+        estimatedByteCount: Int,
+        encodedByteCount: ([Element]) throws -> Int
+    ) throws -> ByteBudgetChunk<Element> {
+        let actualByteCount = try validatedByteCount(encodedByteCount(elements))
+        try validateAdditiveEstimate(
+            estimatedByteCount,
+            actualByteCount: actualByteCount,
+            elementCount: elements.count
+        )
+        return ByteBudgetChunk(elements: elements, encodedByteCount: actualByteCount)
+    }
+
+    private func validateAdditiveEstimate(
+        _ estimatedByteCount: Int,
+        actualByteCount: Int,
+        elementCount: Int
+    ) throws {
+        guard estimatedByteCount == actualByteCount else {
+            throw ByteBudgetPartitionerError.additiveEncodingMismatch(
+                estimated: estimatedByteCount,
+                actual: actualByteCount,
+                elementCount: elementCount
+            )
+        }
+    }
+
+    private func checkedSum(_ values: Int...) throws -> Int {
+        try values.reduce(0) { partialResult, value in
+            let (sum, overflow) = partialResult.addingReportingOverflow(value)
+            guard !overflow else {
+                throw ByteBudgetPartitionerError.encodedByteCountOverflow
+            }
+            return sum
+        }
+    }
 }
 public enum ByteBudgetPartitionStrategy: String, Codable, Sendable {
     case linearPrefixEncoding
     case binarySearchEncoding
+    case incrementalJSONElementEncoding
 }
