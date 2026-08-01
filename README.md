@@ -58,6 +58,9 @@ for the pinned Swift SDK:
 - E006: after all 100 `span.end()` calls and the independent ledger completed,
   abrupt stops at effective host intervals through 181 ms recovered 0/100;
   300-ms conditions had complete files and recovered 100/100 for both presets.
+- E007: waiting for provider force-flush completion created a file and changed
+  abrupt-relaunch recovery from 0/100 to 100/100 for both presets; an additional
+  exporter barrier added a failed request and blocking without more recovery.
 
 Across the E003 4/6/8/10-second matrix, delivered multiplicity equaled completed
 HTTP failures plus one. See
@@ -84,6 +87,8 @@ scripts/run-process-relaunch.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault>
 scripts/run-write-boundary.sh <evidence-run-id> <span-run-uuid> \
   <officialInstant-or-officialDefault> <ledger-offset-ms>
+scripts/run-flush-barrier.sh <evidence-run-id> <span-run-uuid> \
+  <officialInstant-or-officialDefault> <explicit-or-durabilityBarrier>
 ```
 
 `scripts/run-collector.sh` needs permission to bind local OTLP and internal
@@ -101,4 +106,5 @@ their sources of truth are `project.yml` and the pinned installer.
 | E004 | Can single-owner retry stop amplification without reintroducing loss? | Complete: 100/100 exactly once after one and two failures |
 | E005 | What survives process termination and relaunch? | Complete: both presets recovered 100/100 exactly once after controlled termination |
 | E006 | What survives termination during the persistence write boundary? | Complete: 0/100 before an observable file, 100/100 after it |
-| E007 | Can a lifecycle flush close the upstream durability gap? | Next |
+| E007 | Can a lifecycle flush close the upstream durability gap? | Complete: provider flush changed 0/100 to 100/100 for both presets |
+| E008 | Does the same intervention fit a real iOS background transition? | Next |
