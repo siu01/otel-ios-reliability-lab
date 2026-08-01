@@ -1,0 +1,84 @@
+{
+  "byteBudget": 262144,
+  "elementCount": 20,
+  "primaryPayloadBytes": 143360,
+  "secondaryPayloadBytes": 102400,
+  "mixedPayloadBytes": 2457600,
+  "strategiesMatchedExactly": true,
+  "conditions": [
+    {
+      "payloadPattern": "alternatingPrimarySecondary",
+      "primaryElementCount": 10,
+      "secondaryElementCount": 10,
+      "acceptedObjectCount": 10,
+      "chunkElementCounts": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+      "encodedObjectBytes": [
+        245818,
+        245818,
+        245818,
+        245818,
+        245819,
+        245820,
+        245820,
+        245820,
+        245820,
+        245820
+      ]
+    },
+    {
+      "payloadPattern": "groupedPrimaryFirst",
+      "primaryElementCount": 10,
+      "secondaryElementCount": 10,
+      "acceptedObjectCount": 15,
+      "chunkElementCounts": [1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1],
+      "encodedObjectBytes": [
+        143390,
+        143390,
+        143390,
+        143390,
+        143390,
+        143390,
+        143390,
+        143390,
+        143390,
+        245820,
+        204860,
+        204860,
+        204860,
+        204860,
+        102431
+      ]
+    },
+    {
+      "payloadPattern": "groupedSecondaryFirst",
+      "primaryElementCount": 10,
+      "secondaryElementCount": 10,
+      "acceptedObjectCount": 15,
+      "chunkElementCounts": [2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      "encodedObjectBytes": [
+        204858,
+        204858,
+        204858,
+        204858,
+        204859,
+        143391,
+        143391,
+        143391,
+        143391,
+        143391,
+        143391,
+        143391,
+        143391,
+        143391,
+        143391
+      ]
+    },
+    {
+      "payloadPattern": "constant",
+      "primaryElementCount": 20,
+      "secondaryElementCount": 0,
+      "acceptedObjectCount": 20,
+      "note": "control only; not the same mixed payload multiset"
+    }
+  ]
+}
