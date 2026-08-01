@@ -1,0 +1,62 @@
+{
+  "binary" : {
+    "collectionEncoderCalls" : 22,
+    "elementEncoderCalls" : 0,
+    "encodedOutputBytes" : 3983190,
+    "partitions" : [
+      {
+        "elementCount" : 248,
+        "encodedByteCount" : 261286,
+        "firstSequence" : 1,
+        "lastSequence" : 248,
+        "outcome" : "accepted"
+      },
+      {
+        "elementCount" : 248,
+        "encodedByteCount" : 261394,
+        "firstSequence" : 249,
+        "lastSequence" : 496,
+        "outcome" : "accepted"
+      },
+      {
+        "elementCount" : 4,
+        "encodedByteCount" : 4218,
+        "firstSequence" : 497,
+        "lastSequence" : 500,
+        "outcome" : "accepted"
+      }
+    ]
+  },
+  "byteBudget" : 262144,
+  "elementCount" : 500,
+  "encodedOutputByteReductionPercent" : 73.50359887426912,
+  "incremental" : {
+    "collectionEncoderCalls" : 5,
+    "elementEncoderCalls" : 500,
+    "encodedOutputBytes" : 1055402,
+    "partitions" : [
+      {
+        "elementCount" : 248,
+        "encodedByteCount" : 261286,
+        "firstSequence" : 1,
+        "lastSequence" : 248,
+        "outcome" : "accepted"
+      },
+      {
+        "elementCount" : 248,
+        "encodedByteCount" : 261394,
+        "firstSequence" : 249,
+        "lastSequence" : 496,
+        "outcome" : "accepted"
+      },
+      {
+        "elementCount" : 4,
+        "encodedByteCount" : 4218,
+        "firstSequence" : 497,
+        "lastSequence" : 500,
+        "outcome" : "accepted"
+      }
+    ]
+  },
+  "payloadBytes" : 1024
+}
