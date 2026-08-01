@@ -77,9 +77,9 @@ if [[ ! "$persistence_object_byte_budget" =~ ^[1-9][0-9]*$ ]] \
   exit 64
 fi
 case "$persistence_object_partition_strategy" in
-  linearPrefixEncoding|binarySearchEncoding) ;;
+  linearPrefixEncoding|binarySearchEncoding|incrementalJSONElementEncoding) ;;
   *)
-    echo "partition strategy must be linearPrefixEncoding or binarySearchEncoding" >&2
+    echo "partition strategy must be linearPrefixEncoding, binarySearchEncoding, or incrementalJSONElementEncoding" >&2
     exit 64
     ;;
 esac
