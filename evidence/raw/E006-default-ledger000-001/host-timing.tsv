@@ -1,0 +1,13 @@
+event	utc_timestamp
+first_launch_requested	2026-08-01T13:19:54.273Z
+first_launch_returned	2026-08-01T13:19:56.367Z
+generated_ledger_observed	2026-08-01T13:19:57.640Z
+registered_offset_elapsed	2026-08-01T13:19:57.677Z
+persistence_visibility_checked	2026-08-01T13:19:57.723Z
+termination_requested	2026-08-01T13:19:57.757Z
+first_process_terminated	2026-08-01T13:19:58.228Z
+collector_start_requested	2026-08-01T13:19:58.448Z
+collector_ready	2026-08-01T13:19:59.140Z
+resume_launch_requested	2026-08-01T13:19:59.160Z
+resume_launch_returned	2026-08-01T13:20:00.000Z
+capture_window_complete	2026-08-01T13:20:30.085Z
