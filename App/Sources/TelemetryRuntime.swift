@@ -84,7 +84,7 @@ final class TelemetryRuntime {
             scheduleDelay: TimeInterval(run.processorScheduleDelayMilliseconds) / 1_000,
             exportTimeout: 2,
             maxQueueSize: 4_096,
-            maxExportBatchSize: 256
+            maxExportBatchSize: run.maxExportBatchSize
         )
         let provider = TracerProviderBuilder()
             .add(spanProcessor: processor)

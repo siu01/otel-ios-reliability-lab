@@ -104,6 +104,15 @@ struct ContentView: View {
                             .font(.body.monospacedDigit().weight(.semibold))
                     }
                 }
+
+                Stepper(value: $controller.maxExportBatchSize, in: 10...512, step: 10) {
+                    HStack {
+                        Text("Max export batch")
+                        Spacer()
+                        Text(controller.maxExportBatchSize.formatted())
+                            .font(.body.monospacedDigit().weight(.semibold))
+                    }
+                }
             }
         }
     }
