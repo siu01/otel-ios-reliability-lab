@@ -55,8 +55,8 @@ if [[ ! "$max_export_batch_size" =~ ^[1-9][0-9]*$ ]] || (( max_export_batch_size
   echo "maximum export batch size must be an integer from 1 through 512" >&2
   exit 64
 fi
-if [[ ! "$payload_attribute_bytes" =~ ^[0-9]+$ ]] || (( payload_attribute_bytes > 65536 )); then
-  echo "payload attribute bytes must be an integer from 0 through 65536" >&2
+if [[ ! "$payload_attribute_bytes" =~ ^[0-9]+$ ]] || (( payload_attribute_bytes > 524288 )); then
+  echo "payload attribute bytes must be an integer from 0 through 524288" >&2
   exit 64
 fi
 
