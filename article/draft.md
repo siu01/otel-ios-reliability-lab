@@ -26,6 +26,9 @@ published: false
 していても再起動後の回収は0件だった。少し待ってファイルが完成すると100件へ
 戻った。
 
+そこで実際のSwiftUI background通知からforceFlushしたところ、45〜52msで
+ファイルへ渡り、同じabrupt restartを0件から100件へ変えられた。
+
 欠損を0にすることと、重複を0にすることは別問題だった。
 
 ## 先に見つかった意外なもの
@@ -301,9 +304,43 @@ Defaultではprovider onlyより62.84ms、Instantでは14.28ms長く、不要な
 private queueへ非同期dispatchする。今回たまたまホスト確認までに完了したのであり、
 provider forceFlushが全端末で永続化完了を保証する、とソースからは言えない。
 
-そしてE007は実際のbackground通知ではない。synthetic burstの直後にアプリがflushし、
-ホストが完了を待ってから殺した。実際のsuspension deadline内でも37〜100msを確保
-できるかは、次の実験になる。
+ただしE007は実際のbackground通知ではない。synthetic burstの直後にアプリがflushし、
+ホストが完了を待ってから殺した。そこで次は、同じ介入をSwiftUIの実lifecycleへ
+移した。
+
+## E008：実background通知でも0件から100件へ変わった
+
+E008では`BatchSpanProcessor`のscheduleを5秒へ延ばした。台帳100件を観測した
+ホストがMobile Safariを起動し、アプリの`scenePhase`が`.background`になったことを
+JSONL eventで確認する。Collectorはまだ起動しない。
+
+- 対照条件はbackground event観測後、そのままSIGKILLする。
+- 介入条件はbackground handlerからprovider forceFlushし、完了event観測後に
+  SIGKILLする。
+- その後Collectorを起動し、同じrun IDでアプリを再起動する。
+
+4条件すべてでbackground eventは台帳commit後1.74〜2.56秒に発生し、5秒schedule
+より前だった。
+
+| Persistence | background時の動作 | Flush duration | 終了前file | 再起動後received |
+|---|---|---:|---:|---:|
+| Default | 何もしない | — | 0 | 0/100 |
+| Instant | 何もしない | — | 0 | 0/100 |
+| Default | provider forceFlush | 45.32ms | 1 | 100/100 |
+| Instant | provider forceFlush | 51.39ms | 1 | 100/100 |
+
+![E008で実background通知からforceFlushし、回収を0件から100件へ変えた比較図](./assets/e008-background-flush.png)
+
+flushなしでは、DefaultもInstantも永続化ファイル0、HTTP attempt 0、回収0だった。
+Instantの同期writerであっても、上流batchから呼ばれなければ何も保存できない。
+
+介入条件ではbackground、flush開始、flush完了が順番に記録され、停止前に完全な
+ファイルが1個見えた。再起動後はどちらも27,818-byte requestを1回だけ送り、
+100/100、重複0で一致した。
+
+これは実際のiOS lifecycle callback内で介入が実行できた証拠だが、実端末の
+suspension deadlineやjetsamまで保証するものではない。100 Span・Simulator・
+各1 runのmechanism proofとして扱う。
 
 ## 何が「不可能を可能」にしたのか
 
@@ -323,6 +360,10 @@ E007では、その境界をforceFlushで能動的に越えさせ、同じabrupt
 100件へ変えられた。ただ永続化をONにするのではなく、いつdurableになったと
 みなすかをアプリ側で制御した結果である。
 
+E008ではその制御を実際の`scenePhase.background`へ移しても、両presetで0/100から
+100/100へ変わった。「backgroundへ行くから失う」を完全に不可避とせず、利用可能な
+lifecycle windowで耐久境界を越える、という介入にできた。
+
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
 正しくretryしても、組み合わせ全体が望むsemanticsになるとは限らない。
@@ -335,13 +376,13 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
 
 - retryの所有者を1層にする（mechanism proof済み）。
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
-- lifecycle相当のタイミングでbatch queueをflushする（mechanism proof済み）。
+- `scenePhase.background`でbatch queueをflushする（Simulatorでmechanism proof済み）。
 - batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次の実験では、実際のscene background通知とsuspension条件でも同じ介入が間に合う
-かを比較する。
+次は100件を超えるbatchでbackground flush時間とUI応答性を比較し、実用上の
+トレードオフを測る必要がある。
 
 ## 試行錯誤も証跡に残す
 
@@ -364,15 +405,16 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
   実行した。
 - 書き込み境界試験はSimulatorプロセスへの直接SIGKILLであり、実端末のjetsamや
   ユーザー終了と同一ではない。
-- flush介入はsynthetic burst直後に実行し、実際のiOS lifecycle callbackではない。
+- E007のflush介入はsynthetic、E008は実際のSwiftUI lifecycle callbackだが、
+  Simulatorがbackground実行を許した単一条件である。
 
 SDK全バージョン、実端末、すべてのネットワーク障害へ一般化はしない。
 
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
-- scenePhase backgroundでflushがsuspension前に完了するか。
 - lifecycle flush中のmain-thread応答性とenergy costは何か。
+- 実端末でbackground flushがsuspension前に完了するか。途中で止めると何件残るか。
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
 - 1,000 Span時の書き込み時間、ストレージ、メインスレッド影響。
 - downstream dedupに必要な状態量。
@@ -396,6 +438,10 @@ E007ではprovider forceFlush完了を待ってから同じSIGKILLを送り、�
 100/100へ戻した。より強いexporter Barrierも100/100だったが、失敗送信と追加
 blockを増やしただけだった。最小の介入で耐久境界を越える方が、この条件では
 良い結果になった。
+
+E008ではその最小介入を実際の`scenePhase.background`から呼んだ。flushなしは
+両presetとも0/100、flushありは45〜52msでfileへ到達し100/100だった。永続化の
+種類より前に、上流batchをいつ永続化層へ渡すかが生存率を決めた。
 
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
