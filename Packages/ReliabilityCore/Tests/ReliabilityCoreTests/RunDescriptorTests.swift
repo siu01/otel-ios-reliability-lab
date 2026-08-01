@@ -19,6 +19,8 @@ struct RunDescriptorTests {
             processorScheduleDelayMilliseconds: 5_000,
             maxExportBatchSize: 100,
             payloadAttributeBytes: 1_536,
+            payloadAttributeSecondaryBytes: 512,
+            payloadAttributePattern: .alternatingPrimarySecondary,
             persistenceObjectPolicy: .encodedByteBudget,
             persistenceObjectByteBudget: 240_000,
             persistenceObjectPartitionStrategy: .incrementalJSONElementEncoding,
@@ -49,6 +51,8 @@ struct RunDescriptorTests {
         object.removeValue(forKey: "processorScheduleDelayMilliseconds")
         object.removeValue(forKey: "maxExportBatchSize")
         object.removeValue(forKey: "payloadAttributeBytes")
+        object.removeValue(forKey: "payloadAttributeSecondaryBytes")
+        object.removeValue(forKey: "payloadAttributePattern")
         object.removeValue(forKey: "persistenceObjectPolicy")
         object.removeValue(forKey: "persistenceObjectByteBudget")
         object.removeValue(forKey: "persistenceObjectPartitionStrategy")
@@ -64,6 +68,8 @@ struct RunDescriptorTests {
         #expect(decoded.processorScheduleDelayMilliseconds == 250)
         #expect(decoded.maxExportBatchSize == 256)
         #expect(decoded.payloadAttributeBytes == 0)
+        #expect(decoded.payloadAttributeSecondaryBytes == 0)
+        #expect(decoded.payloadAttributePattern == .constant)
         #expect(decoded.persistenceObjectPolicy == .sdkNative)
         #expect(decoded.persistenceObjectByteBudget == 262_144)
         #expect(decoded.persistenceObjectPartitionStrategy == .linearPrefixEncoding)
