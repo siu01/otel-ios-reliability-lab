@@ -14,17 +14,7 @@ struct RunEvidenceStore {
     let runDirectory: URL
 
     init(run: RunDescriptor) throws {
-        guard let root = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first else {
-            throw RunEvidenceStoreError.missingApplicationSupportDirectory
-        }
-
-        runDirectory = root
-            .appendingPathComponent("OTelReliabilityLab", isDirectory: true)
-            .appendingPathComponent("runs", isDirectory: true)
-            .appendingPathComponent(run.runID.uuidString.lowercased(), isDirectory: true)
+        runDirectory = try Self.directory(for: run.runID)
         try FileManager.default.createDirectory(
             at: runDirectory,
             withIntermediateDirectories: true
@@ -38,6 +28,29 @@ struct RunEvidenceStore {
             to: runDirectory.appendingPathComponent("run.json"),
             options: .atomic
         )
+    }
+
+    init(resumingRunID runID: UUID) throws {
+        runDirectory = try Self.directory(for: runID)
+        guard FileManager.default.fileExists(
+            atPath: runDirectory.appendingPathComponent("run.json").path
+        ) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+    }
+
+    private static func directory(for runID: UUID) throws -> URL {
+        guard let root = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else {
+            throw RunEvidenceStoreError.missingApplicationSupportDirectory
+        }
+
+        return root
+            .appendingPathComponent("OTelReliabilityLab", isDirectory: true)
+            .appendingPathComponent("runs", isDirectory: true)
+            .appendingPathComponent(runID.uuidString.lowercased(), isDirectory: true)
     }
 
     func writeGeneratedRecords(_ records: [GeneratedSpanRecord]) throws {
@@ -56,4 +69,3 @@ struct RunEvidenceStore {
         )
     }
 }
-

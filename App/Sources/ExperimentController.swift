@@ -20,6 +20,7 @@ final class ExperimentController: ObservableObject {
     private let telemetry = TelemetryRuntime()
     private let launchConfiguration: AutomationLaunchConfiguration
     private var didAutorun = false
+    private var didResume = false
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
         let launchConfiguration = AutomationLaunchConfiguration(arguments: arguments)
@@ -60,6 +61,40 @@ final class ExperimentController: ObservableObject {
         guard launchConfiguration.shouldAutorun, !didAutorun else { return }
         didAutorun = true
         runBaselineBurst(runID: launchConfiguration.runID)
+    }
+
+    func resumeIfRequested() {
+        guard launchConfiguration.shouldResume, !didResume else { return }
+        didResume = true
+        guard let runID = launchConfiguration.runID else {
+            status = "Failed: resume run ID is missing"
+            return
+        }
+
+        status = "Reopening persisted telemetry"
+        Task { @MainActor in
+            do {
+                let run = RunDescriptor(
+                    experimentID: experimentID,
+                    runID: runID,
+                    plannedSpanCount: plannedSpanCount,
+                    transport: transport,
+                    persistence: persistence,
+                    flushMode: flushMode,
+                    httpClientMode: httpClientMode,
+                    exporterMode: exporterMode
+                )
+                let evidenceStore = try RunEvidenceStore(resumingRunID: runID)
+                try telemetry.configure(
+                    for: run,
+                    runEvidenceDirectory: evidenceStore.runDirectory
+                )
+                latestRunID = runID
+                status = "Persistence recovery active"
+            } catch {
+                status = "Failed: \(error.localizedDescription)"
+            }
+        }
     }
 
     func runBaselineBurst(runID: UUID? = nil) {

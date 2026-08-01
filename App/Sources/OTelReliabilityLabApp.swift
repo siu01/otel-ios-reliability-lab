@@ -10,6 +10,7 @@ struct OTelReliabilityLabApp: App {
                 .environmentObject(controller)
                 .task {
                     controller.autorunIfRequested()
+                    controller.resumeIfRequested()
                 }
         }
     }
