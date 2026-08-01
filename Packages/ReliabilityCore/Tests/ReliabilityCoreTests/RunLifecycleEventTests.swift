@@ -33,4 +33,20 @@ struct RunLifecycleEventTests {
         #expect(decoded.phase == .backgroundObserved)
         #expect(decoded.durationNanoseconds == nil)
     }
+
+    @Test("represents an executed main-queue probe with its delay")
+    func mainQueueProbeEvent() throws {
+        let event = RunLifecycleEvent(
+            phase: .mainQueueProbeExecuted,
+            timestampUnixNanoseconds: 1_785_582_400_789_000_000,
+            flushMode: .explicit,
+            durationNanoseconds: 125_000_000
+        )
+
+        let data = try JSONEncoder().encode(event)
+        let decoded = try JSONDecoder().decode(RunLifecycleEvent.self, from: data)
+
+        #expect(decoded.phase == .mainQueueProbeExecuted)
+        #expect(decoded.durationNanoseconds == 125_000_000)
+    }
 }

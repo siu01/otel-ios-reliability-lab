@@ -15,6 +15,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
     public let persistenceObjectPolicy: PersistenceObjectPolicy
     public let persistenceObjectByteBudget: Int
     public let persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy
+    public let mainQueueProbeEnabled: Bool
     public let httpClientMode: HTTPClientMode
     public let exporterMode: ExporterMode
 
@@ -33,6 +34,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         persistenceObjectPolicy: PersistenceObjectPolicy = .sdkNative,
         persistenceObjectByteBudget: Int = 262_144,
         persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy = .linearPrefixEncoding,
+        mainQueueProbeEnabled: Bool = false,
         httpClientMode: HTTPClientMode = .officialBase,
         exporterMode: ExporterMode = .officialStateful
     ) {
@@ -61,6 +63,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         self.persistenceObjectPolicy = persistenceObjectPolicy
         self.persistenceObjectByteBudget = persistenceObjectByteBudget
         self.persistenceObjectPartitionStrategy = persistenceObjectPartitionStrategy
+        self.mainQueueProbeEnabled = mainQueueProbeEnabled
         self.httpClientMode = httpClientMode
         self.exporterMode = exporterMode
     }
@@ -80,6 +83,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
         case persistenceObjectPolicy
         case persistenceObjectByteBudget
         case persistenceObjectPartitionStrategy
+        case mainQueueProbeEnabled
         case httpClientMode
         case exporterMode
     }
@@ -153,6 +157,10 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             ByteBudgetPartitionStrategy.self,
             forKey: .persistenceObjectPartitionStrategy
         ) ?? .linearPrefixEncoding
+        mainQueueProbeEnabled = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .mainQueueProbeEnabled
+        ) ?? false
         httpClientMode = try container.decodeIfPresent(
             HTTPClientMode.self,
             forKey: .httpClientMode
@@ -188,6 +196,7 @@ public struct RunDescriptor: Codable, Equatable, Sendable {
             persistenceObjectPartitionStrategy,
             forKey: .persistenceObjectPartitionStrategy
         )
+        try container.encode(mainQueueProbeEnabled, forKey: .mainQueueProbeEnabled)
         try container.encode(httpClientMode, forKey: .httpClientMode)
         try container.encode(exporterMode, forKey: .exporterMode)
     }

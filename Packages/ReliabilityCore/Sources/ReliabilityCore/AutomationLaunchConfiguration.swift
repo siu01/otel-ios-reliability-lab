@@ -16,6 +16,7 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let persistenceObjectPolicy: PersistenceObjectPolicy?
     public let persistenceObjectByteBudget: Int?
     public let persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy?
+    public let mainQueueProbeEnabled: Bool?
     public let httpClientMode: HTTPClientMode?
     public let exporterMode: ExporterMode?
 
@@ -64,6 +65,8 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
             in: arguments
         )
             .flatMap(ByteBudgetPartitionStrategy.init(rawValue:))
+        mainQueueProbeEnabled = Self.value(for: "--lab-main-queue-probe", in: arguments)
+            .flatMap(Self.enabledFlag(from:))
         httpClientMode = Self.value(for: "--lab-http-client", in: arguments)
             .flatMap(HTTPClientMode.init(rawValue:))
         exporterMode = Self.value(for: "--lab-exporter", in: arguments)
@@ -73,5 +76,13 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     private static func value(for key: String, in arguments: [String]) -> String? {
         let prefix = key + "="
         return arguments.first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
+    }
+
+    private static func enabledFlag(from value: String) -> Bool? {
+        switch value {
+        case "enabled": true
+        case "disabled": false
+        default: nil
+        }
     }
 }

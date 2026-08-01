@@ -28,5 +28,7 @@ public enum RunLifecyclePhase: String, Codable, Sendable {
     case backgroundObserved
     case flushStarted
     case flushCompleted
+    case mainQueueProbeScheduled
+    case mainQueueProbeExecuted
     case burstCompleted
 }

@@ -22,6 +22,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-persistence-object-policy=encodedByteBudget",
             "--lab-persistence-object-byte-budget=240000",
             "--lab-persistence-object-partition-strategy=binarySearchEncoding",
+            "--lab-main-queue-probe=enabled",
             "--lab-http-client=instrumentedBase",
             "--lab-exporter=statelessHTTP",
         ])
@@ -41,6 +42,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.persistenceObjectPolicy == .encodedByteBudget)
         #expect(config.persistenceObjectByteBudget == 240_000)
         #expect(config.persistenceObjectPartitionStrategy == .binarySearchEncoding)
+        #expect(config.mainQueueProbeEnabled == true)
         #expect(config.httpClientMode == .instrumentedBase)
         #expect(config.exporterMode == .statelessHTTP)
     }
@@ -61,6 +63,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-persistence-object-policy=guessByCount",
             "--lab-persistence-object-byte-budget=0",
             "--lab-persistence-object-partition-strategy=randomGuess",
+            "--lab-main-queue-probe=sometimes",
             "--lab-http-client=magic",
             "--lab-exporter=rememberEverything",
         ])
@@ -79,6 +82,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.persistenceObjectPolicy == nil)
         #expect(config.persistenceObjectByteBudget == nil)
         #expect(config.persistenceObjectPartitionStrategy == nil)
+        #expect(config.mainQueueProbeEnabled == nil)
         #expect(config.httpClientMode == nil)
         #expect(config.exporterMode == nil)
     }
@@ -111,5 +115,15 @@ struct AutomationLaunchConfigurationTests {
         ])
 
         #expect(config.flushMode == .durabilityBarrier)
+    }
+
+    @Test("parses an explicitly disabled main-queue probe")
+    func parsesDisabledMainQueueProbe() {
+        let config = AutomationLaunchConfiguration(arguments: [
+            "OTelReliabilityLab",
+            "--lab-main-queue-probe=disabled",
+        ])
+
+        #expect(config.mainQueueProbeEnabled == false)
     }
 }
