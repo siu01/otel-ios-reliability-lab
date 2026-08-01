@@ -35,6 +35,7 @@ termination, and relaunch—and what does persistence change?
 
 ## Status
 
-The lab is being bootstrapped. No reliability claim is valid until its experiment
-has a committed plan, raw evidence, and reconciliation report.
-
+The lab is being bootstrapped. Dependency inspection found an official
+`PersistenceSpanExporterDecorator`, so the first durable comparison will test it
+before considering custom persistence. No reliability claim is valid until its
+experiment has a committed plan, raw evidence, and reconciliation report.
