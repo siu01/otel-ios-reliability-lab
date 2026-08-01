@@ -34,7 +34,8 @@ final class ByteBudgetingSpanExporter: SpanExporter, @unchecked Sendable {
         do {
             decisions = try partitioner.partition(
                 spans,
-                encodedByteCount: Self.encodedPersistenceObjectByteCount
+                encodedByteCount: Self.encodedPersistenceObjectByteCount,
+                encodedElementByteCount: Self.encodedPersistenceElementByteCount
             )
         } catch {
             try? eventStore.append(makeEvent(
@@ -117,6 +118,10 @@ final class ByteBudgetingSpanExporter: SpanExporter, @unchecked Sendable {
         var data = try JSONEncoder().encode(spans)
         data.append(0x2C)
         return data.count
+    }
+
+    private static func encodedPersistenceElementByteCount(_ span: SpanData) throws -> Int {
+        try JSONEncoder().encode(span).count
     }
 
     private func claimCallOrdinal() -> Int {
