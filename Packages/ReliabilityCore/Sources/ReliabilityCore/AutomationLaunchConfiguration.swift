@@ -2,6 +2,7 @@ import Foundation
 
 public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let shouldAutorun: Bool
+    public let shouldResume: Bool
     public let experimentID: ExperimentID?
     public let runID: UUID?
     public let spanCount: Int?
@@ -13,6 +14,7 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
 
     public init(arguments: [String]) {
         shouldAutorun = arguments.contains("--lab-autorun")
+        shouldResume = arguments.contains("--lab-resume")
         experimentID = Self.value(for: "--lab-experiment-id", in: arguments)
             .flatMap(ExperimentID.init(rawValue:))
         runID = Self.value(for: "--lab-run-id", in: arguments).flatMap(UUID.init)

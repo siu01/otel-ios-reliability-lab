@@ -20,6 +20,7 @@ struct AutomationLaunchConfigurationTests {
         ])
 
         #expect(config.shouldAutorun)
+        #expect(!config.shouldResume)
         #expect(config.experimentID == ExperimentID(rawValue: "E001"))
         #expect(config.runID == UUID(uuidString: "00000000-0000-0000-0000-000000000042"))
         #expect(config.spanCount == 250)
@@ -44,6 +45,7 @@ struct AutomationLaunchConfigurationTests {
         ])
 
         #expect(!config.shouldAutorun)
+        #expect(!config.shouldResume)
         #expect(config.experimentID == nil)
         #expect(config.spanCount == nil)
         #expect(config.transport == nil)
@@ -51,5 +53,25 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.flushMode == nil)
         #expect(config.httpClientMode == nil)
         #expect(config.exporterMode == nil)
+    }
+
+    @Test("parses a resume-only persistence launch")
+    func parsesResumeLaunch() {
+        let config = AutomationLaunchConfiguration(arguments: [
+            "OTelReliabilityLab",
+            "--lab-resume",
+            "--lab-experiment-id=E005",
+            "--lab-run-id=00000000-0000-0000-0005-000000000001",
+            "--lab-persistence=officialInstant",
+            "--lab-http-client=instrumentedBase",
+            "--lab-exporter=statelessHTTP",
+        ])
+
+        #expect(!config.shouldAutorun)
+        #expect(config.shouldResume)
+        #expect(config.experimentID == ExperimentID(rawValue: "E005"))
+        #expect(config.persistence == .officialInstant)
+        #expect(config.httpClientMode == .instrumentedBase)
+        #expect(config.exporterMode == .statelessHTTP)
     }
 }
