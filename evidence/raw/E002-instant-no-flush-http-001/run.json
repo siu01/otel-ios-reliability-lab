@@ -1,0 +1,9 @@
+{
+  "experimentID" : "E002",
+  "flushMode" : "disabled",
+  "persistence" : "officialInstant",
+  "plannedSpanCount" : 100,
+  "runID" : "00000000-0000-0000-0002-000000000001",
+  "startedAt" : "2026-08-01T12:25:47Z",
+  "transport" : "http"
+}
