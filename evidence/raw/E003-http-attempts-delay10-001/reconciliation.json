@@ -1,0 +1,31 @@
+{
+  "generatedRecordCount" : 100,
+  "receivedRecordCount" : 300,
+  "reconciledAt" : "2026-08-01T12:41:14Z",
+  "report" : {
+    "duplicateGenerationRecordCount" : 0,
+    "duplicateReceiptRecordCount" : 200,
+    "generationGapSequences" : [
+
+    ],
+    "missingReceiptSequences" : [
+
+    ],
+    "plannedSpanCount" : 100,
+    "unexpectedReceiptSequences" : [
+
+    ],
+    "uniqueGeneratedCount" : 100,
+    "uniqueReceivedCount" : 100
+  },
+  "run" : {
+    "experimentID" : "E003",
+    "flushMode" : "disabled",
+    "httpClientMode" : "instrumentedBase",
+    "persistence" : "officialInstant",
+    "plannedSpanCount" : 100,
+    "runID" : "00000000-0000-0000-0003-000000000004",
+    "startedAt" : "2026-08-01T12:40:32Z",
+    "transport" : "http"
+  }
+}
