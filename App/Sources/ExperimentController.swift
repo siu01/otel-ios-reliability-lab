@@ -5,6 +5,7 @@ import ReliabilityCore
 final class ExperimentController: ObservableObject {
     @Published var transport: Transport = .http
     @Published var persistence: PersistenceMode = .disabled
+    @Published var flushMode: FlushMode = .explicit
     @Published var plannedSpanCount = 100
     @Published private(set) var generatedCount = 0
     @Published private(set) var receivedCount = 0
@@ -31,6 +32,9 @@ final class ExperimentController: ObservableObject {
         }
         if let persistence = launchConfiguration.persistence {
             self.persistence = persistence
+        }
+        if let flushMode = launchConfiguration.flushMode {
+            self.flushMode = flushMode
         }
         status = launchConfiguration.shouldAutorun
             ? "Automated baseline queued"
@@ -62,7 +66,8 @@ final class ExperimentController: ObservableObject {
                     runID: runID ?? UUID(),
                     plannedSpanCount: plannedSpanCount,
                     transport: transport,
-                    persistence: persistence
+                    persistence: persistence,
+                    flushMode: flushMode
                 )
                 latestRunID = run.runID
                 isReconciled = false
@@ -93,8 +98,12 @@ final class ExperimentController: ObservableObject {
                 try evidenceStore.writeGeneratedRecords(generated)
                 generatedCount = generated.count
                 receivedCount = 0
-                status = "Flushing exporter"
-                telemetry.forceFlush()
+                if flushMode == .explicit {
+                    status = "Flushing exporter"
+                    telemetry.forceFlush()
+                } else {
+                    status = "Leaving export to scheduled workers"
+                }
                 status = "Burst complete — reconcile on host"
             } catch {
                 status = "Failed: \(error.localizedDescription)"

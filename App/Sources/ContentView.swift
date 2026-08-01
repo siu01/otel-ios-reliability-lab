@@ -58,6 +58,12 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
 
+                Picker("Explicit flush", selection: $controller.flushMode) {
+                    Text("Disabled").tag(FlushMode.disabled)
+                    Text("Enabled").tag(FlushMode.explicit)
+                }
+                .pickerStyle(.segmented)
+
                 Stepper(value: $controller.plannedSpanCount, in: 10...1_000, step: 10) {
                     HStack {
                         Text("Planned spans")
