@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 5 ]]; then
-  echo "usage: scripts/run-late-collector.sh <experiment-id> <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode>" >&2
+if [[ $# -lt 5 || $# -gt 7 ]]; then
+  echo "usage: scripts/run-late-collector.sh <experiment-id> <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [http-client-mode] [collector-delay-seconds]" >&2
   exit 64
 fi
 
@@ -11,6 +11,8 @@ evidence_run_id="$2"
 span_run_id="$3"
 persistence_mode="$4"
 flush_mode="$5"
+http_client_mode="${6:-officialBase}"
+collector_delay_seconds="${7:-8}"
 
 if [[ ! "$experiment_id" =~ ^E[0-9]{3}$ ]]; then
   echo "invalid experiment ID" >&2
@@ -38,6 +40,17 @@ case "$flush_mode" in
     exit 64
     ;;
 esac
+case "$http_client_mode" in
+  officialBase|instrumentedBase) ;;
+  *)
+    echo "invalid HTTP client mode" >&2
+    exit 64
+    ;;
+esac
+if [[ ! "$collector_delay_seconds" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+  echo "invalid Collector delay" >&2
+  exit 64
+fi
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 simulator_udid="${LAB_SIMULATOR_UDID:-72FAE57E-1A63-4BF7-A20E-8C1C23C294E9}"
@@ -49,6 +62,7 @@ capture_path="$run_dir/received-otlp.jsonl"
 collector_log="$run_dir/collector.log"
 timing_log="$run_dir/host-timing.tsv"
 persistence_snapshot="$run_dir/persistence-files-after.tsv"
+http_attempts_path="$run_dir/http-attempts.jsonl"
 collector_binary="$repo_dir/collector/bin/otelcol"
 collector_pid=""
 
@@ -64,7 +78,7 @@ cleanup_collector() {
 }
 trap cleanup_collector EXIT INT TERM
 
-for path in "$capture_path" "$collector_log" "$timing_log" "$persistence_snapshot"; do
+for path in "$capture_path" "$collector_log" "$timing_log" "$persistence_snapshot" "$http_attempts_path"; do
   if [[ -e "$path" ]]; then
     echo "refusing to overwrite existing evidence: $path" >&2
     exit 1
@@ -100,10 +114,11 @@ xcrun simctl launch \
   --lab-span-count=100 \
   --lab-transport=http \
   "--lab-persistence=$persistence_mode" \
-  "--lab-flush=$flush_mode"
+  "--lab-flush=$flush_mode" \
+  "--lab-http-client=$http_client_mode"
 printf 'app_launch_returned\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$timing_log"
 
-sleep 8
+sleep "$collector_delay_seconds"
 
 export OTEL_LAB_CAPTURE_PATH="$capture_path"
 printf 'collector_start_requested\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$timing_log"
@@ -140,6 +155,12 @@ app_run_dir="$app_container/Library/Application Support/OTelReliabilityLab/runs/
 persistence_dir="$app_container/Library/Application Support/OTelReliabilityLab/persistence/$persistence_mode"
 cp "$app_run_dir/generated.jsonl" "$run_dir/generated.jsonl"
 cp "$app_run_dir/run.json" "$run_dir/run.json"
+if [[ -f "$app_run_dir/http-attempts.jsonl" ]]; then
+  cp "$app_run_dir/http-attempts.jsonl" "$http_attempts_path"
+elif [[ "$http_client_mode" == "instrumentedBase" ]]; then
+  echo "instrumented HTTP attempt log is missing" >&2
+  exit 1
+fi
 
 if [[ -d "$persistence_dir" ]]; then
   printf '# directory_exists=true\n' > "$persistence_snapshot"
