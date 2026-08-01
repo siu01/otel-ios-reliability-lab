@@ -13,6 +13,7 @@ let package = Package(
         .executable(name: "reliability-reconcile", targets: ["ReliabilityCLI"]),
         .executable(name: "reliability-partition-cost", targets: ["PartitionCostCLI"]),
         .executable(name: "reliability-payload-order-cost", targets: ["PayloadOrderCostCLI"]),
+        .executable(name: "reliability-processor-boundary-cost", targets: ["ProcessorBoundaryCostCLI"]),
     ],
     targets: [
         .target(name: "ReliabilityCore"),
@@ -26,6 +27,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "PayloadOrderCostCLI",
+            dependencies: ["ReliabilityCore"]
+        ),
+        .executableTarget(
+            name: "ProcessorBoundaryCostCLI",
             dependencies: ["ReliabilityCore"]
         ),
         .testTarget(
