@@ -35,9 +35,13 @@ These are hypotheses, not conclusions.
 
 | Condition | Evidence directory | Span run ID |
 |---|---|---|
-| Disabled | `E001-late-collector-http-none-001` | `00000000-0000-0000-0001-000000000001` |
+| Disabled | `E001-late-collector-http-none-003` | `00000000-0000-0000-0001-000000000005` |
 | Default | `E001-late-collector-http-default-001` | `00000000-0000-0000-0001-000000000002` |
 | Instant | `E001-late-collector-http-instant-001` | `00000000-0000-0000-0001-000000000003` |
+
+Attempts `none-001` and `none-002` are preserved but excluded. The first
+violated the fixed startup timing; the second recorded the wrong experiment ID.
+The accepted disabled run uses a new ID so no invalid evidence is overwritten.
 
 ## Measurements
 
@@ -53,3 +57,16 @@ If app-side status shows generation failure or the Collector cannot reach ready
 state, preserve the attempt under a new run ID and do not reinterpret it as a
 delivery result.
 
+## Post-observation replication
+
+The first instant run delivered every sequence twice. Because this behavior was
+not predicted, run a fresh-install replication before treating it as more than
+an isolated observation:
+
+| Condition | Evidence directory | Span run ID |
+|---|---|---|
+| Instant replication | `E001-late-collector-http-instant-002` | `00000000-0000-0000-0001-000000000006` |
+
+This replication was added after inspecting `instant-001`; it is confirmatory,
+not part of the original one-run comparison. It must use the unchanged script,
+8-second outage, 30-second capture, and 100-span count.
