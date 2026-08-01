@@ -268,6 +268,43 @@ flowchart LR
 あり、SDKの普遍的なSLAではない。重要なのはミリ秒の数字より、`span.end()`と
 「新しいプロセスが回収できる」の間に別の耐久化境界があることだ。
 
+## E007：flush完了を待つと0件から100件へ戻せた
+
+E006で失ったのは、Persistence Exporterへまだ渡っていないbatchだった。それなら
+終了前に`TracerProvider.forceFlush()`でBatchSpanProcessorをdrainすればよい。
+
+アプリ側に生成台帳commit、flush開始、flush完了、burst完了のeventを追加し、
+単調時計でflush時間も記録した。ホストはflush完了eventを観測してから追加待機0msで
+SIGKILLし、同じrunを再起動した。
+
+さらに比較用として、provider forceFlush後にトップレベルのPersistence Exporter
+自身もflushする`durabilityBarrier`を実装した。これは非同期file writerを待つが、
+Collector停止中でも保存済みファイルの即時送信を試みる。
+
+| Persistence | Flush | App内duration | 終了前file | 終了前HTTP | 再起動後received |
+|---|---|---:|---:|---|---:|
+| Default | provider only | 37.27ms | 1 | なし | 100/100 |
+| Instant | provider only | 74.04ms | 1 | なし | 100/100 |
+| Default | durability barrier | 100.11ms | 1 | 1回失敗 | 100/100 |
+| Instant | durability barrier | 88.32ms | 1 | 1回失敗 | 100/100 |
+
+同じzero-offset条件でE006はDefault 2/2、Instant 1/1が0/100だった。E007では
+provider forceFlushの完了を待つだけで、両方とも100/100へ変わった。0件区間は
+避けられない宿命ではなかった。
+
+一方、強いBarrierは回収数を増やさなかった。Barrier runではCollector停止中に
+27,818-byte requestが接続拒否で失敗し、再起動後に同じbodyのattempt 2が成功した。
+Defaultではprovider onlyより62.84ms、Instantでは14.28ms長く、不要な即時送信も
+増えた。この行列での最小介入はprovider forceFlushだった。
+
+ただしDefaultの公式実装は、provider forceFlushから呼ばれた`export`でfile appendを
+private queueへ非同期dispatchする。今回たまたまホスト確認までに完了したのであり、
+provider forceFlushが全端末で永続化完了を保証する、とソースからは言えない。
+
+そしてE007は実際のbackground通知ではない。synthetic burstの直後にアプリがflushし、
+ホストが完了を待ってから殺した。実際のsuspension deadline内でも37〜100msを確保
+できるかは、次の実験になる。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
@@ -282,6 +319,10 @@ flowchart LR
 分かった。新しいプロセスが回収できたのは、完全なファイルへ到達したbatchだけ
 だった。
 
+E007では、その境界をforceFlushで能動的に越えさせ、同じabrupt stopを0件から
+100件へ変えられた。ただ永続化をONにするのではなく、いつdurableになったと
+みなすかをアプリ側で制御した結果である。
+
 一方、InstantとstatefulなOTLP/HTTP exporterを重ねると、早いretryが欠損を
 回収しながらコピーを増幅した。at-least-onceを2層へ独立に持たせると、各層が
 正しくretryしても、組み合わせ全体が望むsemanticsになるとは限らない。
@@ -294,13 +335,13 @@ E004とE005により「retryの所有者を1層にする」方針は、一時障
 
 - retryの所有者を1層にする（mechanism proof済み）。
 - 永続化側がretryするなら、失敗batchを内部保持しないstateless exporterを使う。
-- lifecycle通知でbatch queueをflushし、ファイル到達を早める。
+- lifecycle相当のタイミングでbatch queueをflushする（mechanism proof済み）。
 - batch delay短縮やSimpleSpanProcessorを、書き込みコストと比較する。
 - Collectorや保存先でtrace ID/span IDをキーにdeduplicateする。
 
 下流dedupは可能そうだが、保持期間・状態量・コストをreceiver側へ移す。
-次の実験では、lifecycle-aware flushでこの0件区間を閉じられるかと、ブロック時間
-のコストを比較する。
+次の実験では、実際のscene background通知とsuspension条件でも同じ介入が間に合う
+かを比較する。
 
 ## 試行錯誤も証跡に残す
 
@@ -323,14 +364,15 @@ experiment IDを`E000`へhard-codeしていた。どちらも削除せず、な�
   実行した。
 - 書き込み境界試験はSimulatorプロセスへの直接SIGKILLであり、実端末のjetsamや
   ユーザー終了と同一ではない。
+- flush介入はsynthetic burst直後に実行し、実際のiOS lifecycle callbackではない。
 
 SDK全バージョン、実端末、すべてのネットワーク障害へ一般化はしない。
 
 ## 次に壊すもの
 
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
-- lifecycle-aware flushで0件の上流windowを閉じられるか。
-- loss改善とmain-thread停止時間のtrade-offは何か。
+- scenePhase backgroundでflushがsuspension前に完了するか。
+- lifecycle flush中のmain-thread応答性とenergy costは何か。
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
 - 1,000 Span時の書き込み時間、ストレージ、メインスレッド影響。
 - downstream dedupに必要な状態量。
@@ -349,6 +391,11 @@ exporterの組み合わせでは、失敗ごとに同じbatchを2層が保持し
 Persistence fileがまだなければ再起動後は0件だった。300ms条件でファイルが
 見えてからは再び100件を回収した。耐久境界は設定フラグでもAPI callでもなく、
 次のプロセスが読める状態へbatchが到達したかどうかにある。
+
+E007ではprovider forceFlush完了を待ってから同じSIGKILLを送り、両presetを
+100/100へ戻した。より強いexporter Barrierも100/100だったが、失敗送信と追加
+blockを増やしただけだった。最小の介入で耐久境界を越える方が、この条件では
+良い結果になった。
 
 「永続化をONにしたから安心」ではなく、誰がretryを所有し、失敗した同じ
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
