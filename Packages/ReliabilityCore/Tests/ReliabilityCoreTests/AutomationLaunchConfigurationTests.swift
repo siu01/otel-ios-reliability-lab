@@ -19,6 +19,8 @@ struct AutomationLaunchConfigurationTests {
             "--lab-schedule-delay-ms=5000",
             "--lab-max-export-batch-size=100",
             "--lab-payload-bytes=1536",
+            "--lab-secondary-payload-bytes=512",
+            "--lab-payload-pattern=alternatingPrimarySecondary",
             "--lab-persistence-object-policy=encodedByteBudget",
             "--lab-persistence-object-byte-budget=240000",
             "--lab-persistence-object-partition-strategy=binarySearchEncoding",
@@ -39,6 +41,8 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.processorScheduleDelayMilliseconds == 5_000)
         #expect(config.maxExportBatchSize == 100)
         #expect(config.payloadAttributeBytes == 1_536)
+        #expect(config.payloadAttributeSecondaryBytes == 512)
+        #expect(config.payloadAttributePattern == .alternatingPrimarySecondary)
         #expect(config.persistenceObjectPolicy == .encodedByteBudget)
         #expect(config.persistenceObjectByteBudget == 240_000)
         #expect(config.persistenceObjectPartitionStrategy == .binarySearchEncoding)
@@ -60,6 +64,8 @@ struct AutomationLaunchConfigurationTests {
             "--lab-schedule-delay-ms=0",
             "--lab-max-export-batch-size=0",
             "--lab-payload-bytes=-1",
+            "--lab-secondary-payload-bytes=-1",
+            "--lab-payload-pattern=random",
             "--lab-persistence-object-policy=guessByCount",
             "--lab-persistence-object-byte-budget=0",
             "--lab-persistence-object-partition-strategy=randomGuess",
@@ -79,6 +85,8 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.processorScheduleDelayMilliseconds == nil)
         #expect(config.maxExportBatchSize == nil)
         #expect(config.payloadAttributeBytes == nil)
+        #expect(config.payloadAttributeSecondaryBytes == nil)
+        #expect(config.payloadAttributePattern == nil)
         #expect(config.persistenceObjectPolicy == nil)
         #expect(config.persistenceObjectByteBudget == nil)
         #expect(config.persistenceObjectPartitionStrategy == nil)

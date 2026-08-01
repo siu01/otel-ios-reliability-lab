@@ -13,6 +13,8 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let processorScheduleDelayMilliseconds: Int?
     public let maxExportBatchSize: Int?
     public let payloadAttributeBytes: Int?
+    public let payloadAttributeSecondaryBytes: Int?
+    public let payloadAttributePattern: PayloadAttributePattern?
     public let persistenceObjectPolicy: PersistenceObjectPolicy?
     public let persistenceObjectByteBudget: Int?
     public let persistenceObjectPartitionStrategy: ByteBudgetPartitionStrategy?
@@ -49,6 +51,14 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
         payloadAttributeBytes = Self.value(for: "--lab-payload-bytes", in: arguments)
             .flatMap(Int.init)
             .flatMap { $0 >= 0 ? $0 : nil }
+        payloadAttributeSecondaryBytes = Self.value(
+            for: "--lab-secondary-payload-bytes",
+            in: arguments
+        )
+            .flatMap(Int.init)
+            .flatMap { $0 >= 0 ? $0 : nil }
+        payloadAttributePattern = Self.value(for: "--lab-payload-pattern", in: arguments)
+            .flatMap(PayloadAttributePattern.init(rawValue:))
         persistenceObjectPolicy = Self.value(
             for: "--lab-persistence-object-policy",
             in: arguments
