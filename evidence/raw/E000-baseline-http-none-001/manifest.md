@@ -13,3 +13,8 @@ capture file was created.
 
 This run ID is intentionally retained and will never be reused.
 
+## SHA-256
+
+| File | Digest |
+|---|---|
+| `collector.log` | `82c214ace29be45dac0a8810a6b986f83822d82423bed1befcb81717cacabec7` |
