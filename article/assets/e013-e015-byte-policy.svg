@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title description">
+  <title id="title">E013 to E015 byte-aware persistence policy</title>
+  <desc id="description">A byte-aware policy recovers previously silent multi-span loss, records an explicit rejection for one indivisible oversized span, and binary search reduces the prototype's seven-second flush to about half a second.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1d2b"/>
+      <stop offset="1" stop-color="#03070c"/>
+    </linearGradient>
+    <linearGradient id="success" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#5eead4"/>
+    </linearGradient>
+    <linearGradient id="speed" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="675" rx="28" fill="url(#bg)"/>
+  <circle cx="1125" cy="45" r="185" fill="#2dd4bf" opacity="0.05"/>
+  <circle cx="60" cy="635" r="170" fill="#f59e0b" opacity="0.04"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, sans-serif">
+    <text x="70" y="70" fill="#f8fafc" font-size="34" font-weight="750">0件は救う。救えない1件は、黙って消さない</text>
+    <text x="71" y="107" fill="#94a3b8" font-size="18">E013 → E014 → E015 • count proxyからencoded byte contractへ</text>
+
+    <!-- recoverable -->
+    <rect x="70" y="140" width="650" height="322" rx="22" fill="#0f172a" stroke="#334155"/>
+    <text x="101" y="181" fill="#e2e8f0" font-size="22" font-weight="750">分割できるbatch：silent lossを全件回収</text>
+    <text x="101" y="208" fill="#64748b" font-size="14">processor batchは100 / 256のまま • Default / Instant共通</text>
+
+    <text x="102" y="256" fill="#fca5a5" font-size="15" font-weight="700">SDK native</text>
+    <rect x="223" y="231" width="190" height="38" rx="10" fill="#7f1d1d"/>
+    <text x="397" y="257" fill="#fee2e2" font-size="18" font-weight="800" text-anchor="end">0 / 100</text>
+    <rect x="438" y="231" width="222" height="38" rx="10" fill="#7f1d1d"/>
+    <text x="644" y="257" fill="#fee2e2" font-size="18" font-weight="800" text-anchor="end">0 / 500</text>
+    <text x="319" y="286" fill="#64748b" font-size="12" text-anchor="middle">payload 1,536B</text>
+    <text x="549" y="286" fill="#64748b" font-size="12" text-anchor="middle">payload 0B</text>
+
+    <path d="M223 322 H660" stroke="url(#speed)" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+    <path d="M648 311 L660 322 L648 333" fill="none" stroke="#2dd4bf" stroke-width="4"/>
+    <text x="441" y="312" fill="#fde68a" font-size="13" font-weight="700" text-anchor="middle">JSON encoded bytesで最大prefixを探索</text>
+
+    <text x="102" y="375" fill="#99f6e4" font-size="15" font-weight="700">byte policy</text>
+    <rect x="223" y="349" width="190" height="40" rx="10" fill="url(#success)"/>
+    <text x="397" y="376" fill="#ecfeff" font-size="18" font-weight="800" text-anchor="end">100 / 100</text>
+    <rect x="438" y="349" width="222" height="40" rx="10" fill="url(#success)"/>
+    <text x="644" y="376" fill="#ecfeff" font-size="18" font-weight="800" text-anchor="end">500 / 500</text>
+    <text x="319" y="410" fill="#5eead4" font-size="12" text-anchor="middle">98 + 2 objects</text>
+    <text x="549" y="410" fill="#5eead4" font-size="12" text-anchor="middle">243 + 13 + 242 + 2</text>
+    <text x="380" y="443" fill="#94a3b8" font-size="13" text-anchor="middle">全object ≤ 262,144B • 1 file → 1 request • duplicate 0</text>
+
+    <!-- indivisible -->
+    <rect x="750" y="140" width="380" height="322" rx="22" fill="#0f172a" stroke="#7f1d1d"/>
+    <text x="781" y="181" fill="#e2e8f0" font-size="22" font-weight="750">分割できない1 Span</text>
+    <text x="781" y="208" fill="#64748b" font-size="14">payload 256 KiB • batch 1</text>
+
+    <rect x="781" y="233" width="318" height="74" rx="14" fill="#111827" stroke="#ef4444"/>
+    <text x="804" y="258" fill="#fca5a5" font-size="14" font-weight="700">SDK native</text>
+    <text x="804" y="284" fill="#fee2e2" font-size="18" font-weight="800">flush完了 → file 0 → 0 / 1</text>
+    <text x="1076" y="258" fill="#ef4444" font-size="12" text-anchor="end">silent</text>
+
+    <path d="M940 319 V348" stroke="#f59e0b" stroke-width="4"/>
+    <path d="M930 338 L940 349 L950 338" fill="none" stroke="#f59e0b" stroke-width="4"/>
+
+    <rect x="781" y="360" width="318" height="74" rx="14" fill="#451a03" stroke="#f59e0b"/>
+    <text x="804" y="385" fill="#fde68a" font-size="14" font-weight="700">byte policy</text>
+    <text x="804" y="408" fill="#fef3c7" font-size="16" font-weight="800">rejectedOversize</text>
+    <text x="804" y="426" fill="#fbbf24" font-size="12">263,257B &gt; 262,144B • sequence + span ID</text>
+
+    <!-- cost -->
+    <rect x="70" y="493" width="1060" height="126" rx="20" fill="#111827" stroke="#475569"/>
+    <text x="101" y="529" fill="#e2e8f0" font-size="18" font-weight="750">正しいが遅い → 正しさを保ったまま85–93%短縮</text>
+
+    <text x="102" y="572" fill="#fca5a5" font-size="14" font-weight="700">linear prefix</text>
+    <rect x="230" y="551" width="520" height="28" rx="9" fill="#7f1d1d"/>
+    <text x="735" y="571" fill="#fee2e2" font-size="15" font-weight="800" text-anchor="end">500 spans • 7,036 ms</text>
+
+    <text x="779" y="572" fill="#99f6e4" font-size="14" font-weight="700">binary</text>
+    <rect x="848" y="551" width="220" height="28" rx="9" fill="url(#success)" filter="url(#glow)"/>
+    <text x="1054" y="571" fill="#ecfeff" font-size="15" font-weight="800" text-anchor="end">520 ms</text>
+
+    <text x="600" y="603" fill="#94a3b8" font-size="12" text-anchor="middle">同じ4 objects • 同じ500 / 500 • exact JSON boundary • Default comparator</text>
+    <text x="600" y="651" fill="#64748b" font-size="13" text-anchor="middle">配送回復とrejection可視化は別成果。実運用ではmetric / callback / health stateへの昇格が必要</text>
+  </g>
+</svg>
