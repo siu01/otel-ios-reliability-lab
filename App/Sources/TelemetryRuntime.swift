@@ -43,15 +43,25 @@ final class TelemetryRuntime {
             )
         }
 
-        let baseExporter = OtlpHttpTraceExporter(
-            endpoint: endpoint,
-            config: OtlpConfiguration(
+        let baseExporter: any SpanExporter
+        switch run.exporterMode {
+        case .officialStateful:
+            baseExporter = OtlpHttpTraceExporter(
+                endpoint: endpoint,
+                config: OtlpConfiguration(
+                    timeout: 2,
+                    compression: .none,
+                    exportAsJson: true
+                ),
+                httpClient: httpClient
+            )
+        case .statelessHTTP:
+            baseExporter = StatelessOtlpHTTPTraceExporter(
+                endpoint: endpoint,
                 timeout: 2,
-                compression: .none,
-                exportAsJson: true
-            ),
-            httpClient: httpClient
-        )
+                httpClient: httpClient
+            )
+        }
 
         let exporter: any SpanExporter
         switch run.persistence {

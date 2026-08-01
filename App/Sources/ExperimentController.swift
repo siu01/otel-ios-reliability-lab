@@ -7,6 +7,7 @@ final class ExperimentController: ObservableObject {
     @Published var persistence: PersistenceMode = .disabled
     @Published var flushMode: FlushMode = .explicit
     @Published var httpClientMode: HTTPClientMode = .officialBase
+    @Published var exporterMode: ExporterMode = .officialStateful
     @Published var plannedSpanCount = 100
     @Published private(set) var generatedCount = 0
     @Published private(set) var receivedCount = 0
@@ -40,6 +41,9 @@ final class ExperimentController: ObservableObject {
         if let httpClientMode = launchConfiguration.httpClientMode {
             self.httpClientMode = httpClientMode
         }
+        if let exporterMode = launchConfiguration.exporterMode {
+            self.exporterMode = exporterMode
+        }
         status = launchConfiguration.shouldAutorun
             ? "Automated baseline queued"
             : "Ready for baseline"
@@ -72,7 +76,8 @@ final class ExperimentController: ObservableObject {
                     transport: transport,
                     persistence: persistence,
                     flushMode: flushMode,
-                    httpClientMode: httpClientMode
+                    httpClientMode: httpClientMode,
+                    exporterMode: exporterMode
                 )
                 latestRunID = run.runID
                 isReconciled = false

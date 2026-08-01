@@ -70,6 +70,12 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
 
+                Picker("Exporter retry", selection: $controller.exporterMode) {
+                    Text("Official").tag(ExporterMode.officialStateful)
+                    Text("Stateless").tag(ExporterMode.statelessHTTP)
+                }
+                .pickerStyle(.segmented)
+
                 Stepper(value: $controller.plannedSpanCount, in: 10...1_000, step: 10) {
                     HStack {
                         Text("Planned spans")
