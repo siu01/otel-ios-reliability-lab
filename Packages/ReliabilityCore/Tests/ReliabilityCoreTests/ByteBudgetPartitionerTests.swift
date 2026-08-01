@@ -174,6 +174,44 @@ struct ByteBudgetPartitionerTests {
         }
     }
 
+    @Test("incremental JSON matches binary across deterministic heterogeneous cases")
+    func incrementalJSONMatchesDeterministicCases() throws {
+        var generator = DeterministicGenerator(state: 0xE017_C0DE)
+        let tokens = ["a", "\"", "\\", "🙂", "\n"]
+
+        for _ in 0..<200 {
+            let elementCount = generator.nextInt(in: 1...80)
+            let elements = (0..<elementCount).map { _ in
+                let token = tokens[generator.nextInt(in: 0...(tokens.count - 1))]
+                return String(repeating: token, count: generator.nextInt(in: 0...64))
+            }
+            let budget = generator.nextInt(in: 8...250)
+            let exactCount: ([String]) throws -> Int = { values in
+                var data = try JSONEncoder().encode(values)
+                data.append(0x2C)
+                return data.count
+            }
+            let elementByteCount: (String) throws -> Int = {
+                try JSONEncoder().encode($0).count
+            }
+
+            let binary = try stringDecisionSnapshot(ByteBudgetPartitioner(
+                byteBudget: budget,
+                strategy: .binarySearchEncoding
+            ).partition(elements, encodedByteCount: exactCount))
+            let incremental = try stringDecisionSnapshot(ByteBudgetPartitioner(
+                byteBudget: budget,
+                strategy: .incrementalJSONElementEncoding
+            ).partition(
+                elements,
+                encodedByteCount: exactCount,
+                encodedElementByteCount: elementByteCount
+            ))
+
+            #expect(incremental == binary)
+        }
+    }
+
     private func acceptedChunk<Element>(
         at index: Int,
         in decisions: [ByteBudgetDecision<Element>]
@@ -220,5 +258,15 @@ struct ByteBudgetPartitionerTests {
                 "rejected:\(rejection.element):\(rejection.encodedByteCount)"
             }
         }
+    }
+}
+
+private struct DeterministicGenerator {
+    var state: UInt64
+
+    mutating func nextInt(in range: ClosedRange<Int>) -> Int {
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+        let width = UInt64(range.upperBound - range.lowerBound + 1)
+        return range.lowerBound + Int(state % width)
     }
 }
