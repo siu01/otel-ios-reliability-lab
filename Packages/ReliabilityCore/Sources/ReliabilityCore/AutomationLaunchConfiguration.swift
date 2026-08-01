@@ -8,6 +8,7 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
     public let transport: Transport?
     public let persistence: PersistenceMode?
     public let flushMode: FlushMode?
+    public let httpClientMode: HTTPClientMode?
 
     public init(arguments: [String]) {
         shouldAutorun = arguments.contains("--lab-autorun")
@@ -23,6 +24,8 @@ public struct AutomationLaunchConfiguration: Equatable, Sendable {
             .flatMap(PersistenceMode.init(rawValue:))
         flushMode = Self.value(for: "--lab-flush", in: arguments)
             .flatMap(FlushMode.init(rawValue:))
+        httpClientMode = Self.value(for: "--lab-http-client", in: arguments)
+            .flatMap(HTTPClientMode.init(rawValue:))
     }
 
     private static func value(for key: String, in arguments: [String]) -> String? {

@@ -15,6 +15,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-transport=http",
             "--lab-persistence=officialInstant",
             "--lab-flush=explicit",
+            "--lab-http-client=instrumentedBase",
         ])
 
         #expect(config.shouldAutorun)
@@ -24,6 +25,7 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.transport == .http)
         #expect(config.persistence == .officialInstant)
         #expect(config.flushMode == .explicit)
+        #expect(config.httpClientMode == .instrumentedBase)
     }
 
     @Test("invalid values do not silently become valid defaults")
@@ -35,6 +37,7 @@ struct AutomationLaunchConfigurationTests {
             "--lab-transport=udp",
             "--lab-persistence=yes",
             "--lab-flush=maybe",
+            "--lab-http-client=magic",
         ])
 
         #expect(!config.shouldAutorun)
@@ -43,5 +46,6 @@ struct AutomationLaunchConfigurationTests {
         #expect(config.transport == nil)
         #expect(config.persistence == nil)
         #expect(config.flushMode == nil)
+        #expect(config.httpClientMode == nil)
     }
 }
