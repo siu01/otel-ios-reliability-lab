@@ -1,0 +1,17 @@
+metric	value
+flush_mode	explicit
+experiment_id	E009
+planned_span_count	100
+flush_trigger	background
+processor_schedule_delay_milliseconds	15000
+background_app	com.apple.mobilesafari
+stop_mechanism	direct_sigkill
+first_process_pid	57466
+generated_records_before_background	100
+ledger_to_background_nanoseconds	6114910208
+background_before_schedule_boundary	true
+flush_duration_nanoseconds	111959333
+stop_trigger	flush_completed
+first_process_http_records_before_stop	0
+persistence_visible_before_request	true
+persistence_files_after_termination	1
