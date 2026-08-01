@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 5 || $# -gt 7 ]]; then
-  echo "usage: scripts/run-late-collector.sh <experiment-id> <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [http-client-mode] [collector-delay-seconds]" >&2
+if [[ $# -lt 5 || $# -gt 8 ]]; then
+  echo "usage: scripts/run-late-collector.sh <experiment-id> <evidence-run-id> <span-run-uuid> <persistence-mode> <flush-mode> [http-client-mode] [collector-delay-seconds] [exporter-mode]" >&2
   exit 64
 fi
 
@@ -13,6 +13,7 @@ persistence_mode="$4"
 flush_mode="$5"
 http_client_mode="${6:-officialBase}"
 collector_delay_seconds="${7:-8}"
+exporter_mode="${8:-officialStateful}"
 
 if [[ ! "$experiment_id" =~ ^E[0-9]{3}$ ]]; then
   echo "invalid experiment ID" >&2
@@ -51,6 +52,13 @@ if [[ ! "$collector_delay_seconds" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
   echo "invalid Collector delay" >&2
   exit 64
 fi
+case "$exporter_mode" in
+  officialStateful|statelessHTTP) ;;
+  *)
+    echo "invalid exporter mode" >&2
+    exit 64
+    ;;
+esac
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 simulator_udid="${LAB_SIMULATOR_UDID:-72FAE57E-1A63-4BF7-A20E-8C1C23C294E9}"
@@ -115,7 +123,8 @@ xcrun simctl launch \
   --lab-transport=http \
   "--lab-persistence=$persistence_mode" \
   "--lab-flush=$flush_mode" \
-  "--lab-http-client=$http_client_mode"
+  "--lab-http-client=$http_client_mode" \
+  "--lab-exporter=$exporter_mode"
 printf 'app_launch_returned\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$timing_log"
 
 sleep "$collector_delay_seconds"
