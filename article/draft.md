@@ -8,6 +8,9 @@ published: false
 
 > 検証継続中のドラフトです。結論には必ずexperiment ID、生データ、
 > reconciliation結果を対応させています。
+>
+> 全実験のコード・生データ・manifestはリポジトリで公開しています：
+> [siu01/otel-ios-reliability-lab](https://github.com/siu01/otel-ios-reliability-lab)
 
 ## きっかけ
 
@@ -894,6 +897,19 @@ JSONモデルはE015の実データと256付近でわずかに食い違った。
 
 E020は、証跡の孤立した破損や差し替えは検出できるが、証跡ファイルとmanifest
 の期待digestを同時に書き換える攻撃はローカルの検証だけでは見抜けないことを
-示した。この限界に対応するため、301コミットをそのままGitHub上のprivate
-リポジトリへpushし、外部の履歴アンカーを持たせた。それでもsigned commitや
-独立バックアップほどの保証はなく、これも今後壊すべき前提の一つである。
+示した。この限界に対応するため、301コミットをそのままGitHub上のリポジトリへ
+pushし、外部の履歴アンカーを持たせた。それでもsigned commitや独立バックアップ
+ほどの保証はなく、これも今後壊すべき前提の一つである。
+
+## リポジトリ
+
+コード・生データ・全manifestは
+[siu01/otel-ios-reliability-lab](https://github.com/siu01/otel-ios-reliability-lab)
+で公開している。読者自身が`scripts/verify-all-evidence.sh`や
+`scripts/audit-claim-index.sh`を実行し、この記事の主張が本当にruntime証拠へ
+遡れるかを再検証できる。
+
+- [README](https://github.com/siu01/otel-ios-reliability-lab/blob/agent/initial-lab/README.md)
+- [再現手順](https://github.com/siu01/otel-ios-reliability-lab/blob/agent/initial-lab/docs/reproduction.md)
+- [実験一覧(E000〜E021)](https://github.com/siu01/otel-ios-reliability-lab/tree/agent/initial-lab/experiments)
+- [生データ(evidence/raw)](https://github.com/siu01/otel-ios-reliability-lab/tree/agent/initial-lab/evidence/raw)
