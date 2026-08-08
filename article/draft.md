@@ -546,6 +546,145 @@ queueへ入っていた処理が走ったのは1,271ms後だった。
 providerだけを計時すれば丸ごと見落とす時間でもある。「データを救えた」と
 「main actorを許容時間内に返せた」は別の成功条件だった。
 
+## E017〜E019：byte分割方式を、実機の前にモデルで壊す
+
+E016のあと、byte-aware policyをさらに一般化する3つの追加検証を始めた。ただし
+E016以降、外部実行許可の都合でiOS Simulatorが使えない期間があり、E017とE018は
+「正しさの証明」と「合成JSONモデルでのコスト比較」で止まっている。**この2つは
+実機Simulatorのruntime証拠ではない**。E019は最初から合成モデルのみで登録した
+実験である。この区別はあとのE021監査でも機械的にチェックしている。
+
+### E017：同じ分割結果を、73.5%少ないencode出力で得る
+
+E014〜E015のbinary searchは、候補配列全体を毎回JSON全体としてencodeし直す
+ためO(n²)だった。E017では、各JSON要素を独立にencodeしてbyte数を加算し、
+budget以内の最大prefixを求める`incrementalJSONElementEncoding`を実装した。
+「加算した推定値」と「実際にfull-encodeした結果」を必ず突合し、一致しなければ
+型付きエラーを返すguardも入れた。
+
+| Strategy | Collection encodes | Element encodes | Encoded output合計 |
+|---|---:|---:|---:|
+| Binary search | 22 | 0 | 3,983,190 bytes |
+| Incremental + exact guard | 5 | 500 | 1,055,402 bytes |
+
+500要素・budget 262,144 bytesの合成runで、両戦略の分割結果(248+248+4)は完全に
+一致した。呼び出し回数はIncrementalの方が多いが、処理したencode出力の総量は
+73.5%少ない。異種文字列200ケースのproperty testでも、binary searchと同じ
+maximal-prefix判断を返すことを確認した。これはcorrectnessとcost-shapeの証明
+であり、実機のflush時間を予測するものではない。
+
+### E018：同じpayload構成でも、並び順だけでobject数が10→15に変わる
+
+143,360Bと102,400Bのpayloadを10個ずつ、合計2,457,600 bytesに固定し、並び順
+だけを変えた。
+
+| Pattern | 並び順 | Accepted objects |
+|---|---|---:|
+| Alternating | P,S,P,S,… | 10 |
+| Primary first | P×10, S×10 | 15 |
+| Secondary first | S×10, P×10 | 15 |
+
+交互配置は大小1個ずつを1 objectへペアにできるが、まとめて並べると端数が
+単独objectとして残り、object数が50%増える。Span byte数もSpan数も変えずに
+並び順だけでstorage object数が変わるという結果である。ただしpolicyは
+順序を守ったmaximal-prefix分割であり、後ろの小さいSpanを前へ動かしてbin
+packingするものではない。
+
+### E019：byte policyはprocessor batchの境界を越えられない
+
+500要素・512,000 payload bytesを、processor側の`maxExportBatchSize`
+500/256/100/50で分割すると、byte policyがどれだけ賢くても、上流のexport
+呼び出し単位より外へ要素を移せないことが分かった。
+
+| Processor batch | Export呼び出し回数 | Objects |
+|---:|---:|---:|
+| 500 | 1 | 3 |
+| 256 | 2 | 3 |
+| 100 | 5 | 5 |
+| 50 | 10 | 10 |
+
+事前登録では「batch 256は4 object必要」と予測していたが、実際のモデルでは
+3 objectで収まった。この予測ミスは重要な警告でもある。同じ2番目のexport
+呼び出し(244要素)を、E019の合成JSONモデルは1 objectに収めたが、E015の実際の
+`SpanData`は242+2の2 objectへ分割していた。**合成モデルは実際のSDK encoding
+とわずかに違う**。byte境界ぎりぎりの判断を、モデルだけで本番へ持ち込んでは
+いけない。
+
+## E020〜E021：この記録自体を疑う
+
+ここまでの21実験は「アプリとCollectorの間で何が起きたか」を検証してきた。
+E020とE021は視点を変え、「この証跡自体が改ざんされていないか」「記事の主張は
+本当にruntime証拠に裏付けられているか」を検証する。
+
+### E020：孤立した改ざんは検出できるが、証跡とmanifestを同時に書き換える攻撃はできない
+
+E016の証跡ディレクトリを複製し、5パターンの改ざんを検証した。
+
+| ケース | 期待 | 結果 |
+|---|---|---|
+| 無改変のE016 control | pass | pass (20ファイル検証) |
+| lifecycle証跡を切り詰め | digest失敗 | SHA-256不一致で失敗 |
+| 未登録ファイルを追加 | inventory失敗 | inventory差分で失敗 |
+| 登録済みファイルを削除 | missing-file失敗 | missing-file errorで失敗 |
+| 証跡とmanifest digestを同時に更新 | pass | 登録どおりpass |
+
+最後のケースが重要である。改ざんしたファイルと、それに合わせて書き換えた
+期待digestが一致していれば、ローカルの検証だけでは正規の更新と区別できない。
+
+続けてリポジトリ全体を監査すると、最初期のE000 manifestだけが旧形式
+(digestを表ではなく本文に1個だけ記載)で検証不能だった。生ログ自体は変えず、
+同じ既存digestを標準表へ追記して揃えると、次の結果になった。
+
+```text
+verified_runs=75
+verified_files=1142
+```
+
+これは「証跡は正しい」ことの証明ではなく、「孤立した破損や差し替えなら検出
+できる」ことの証明である。信頼の連鎖は次の通りだと整理した。
+
+```text
+raw file → manifest digest → Git commit → 外部remote/履歴の観測者
+```
+
+E020が実装したのは最初の矢印までで、2番目はcommitした時点で得られる。
+3番目、つまり外部の履歴アンカーがまだない、とこの実験自体が結論づけていた。
+
+### E021：どの主張が実機で確認済みで、どれがモデルだけかを機械的に監査する
+
+21実験のplan/results/raw evidenceを突合するCLIを作った。
+
+```text
+indexed_experiments=21
+runtime_complete=17
+runtime_pending=2
+model_complete=2
+verified_runtime_runs=75
+verified_runtime_files=1142
+```
+
+- E000〜E016は`runtimeComplete`。75 runの生データがすべてE020の検証を通る。
+- **E017とE018は`runtimePending`**。planと明示的にスコープを絞ったpre-runtime
+  結果はあるが、Simulator runの生データは存在しない。
+- **E019とE020は`modelComplete`**。モデル/リポジトリ検証の結果であり、新しい
+  Simulator証拠を主張しない。
+- 記事への収録フラグは現在のdraftと一致しており、E000〜E016は本文に登場し、
+  E017〜E020は登場しない(この節を除く)。
+
+この監査の価値は、実装が進んだことと、実機実験が完了したことを混同しない
+点にある。E017/E018のコードとcore testは、Simulator実行がなくても有用だが、
+それをruntimeの主張へ格上げしないことを機械的に強制する。
+
+## GitHubへの公開：外部の履歴アンカー
+
+E020が指摘した「外部の履歴アンカーがない」という限界は、このセッションで
+解消した。301コミットをすべて保持したまま、GitHub上のprivateリポジトリ
+[siu01/otel-ios-reliability-lab](https://github.com/siu01/otel-ios-reliability-lab)
+へpushした。これにより、ローカルのgitオブジェクトだけでなく、別サービス上の
+コミット履歴からも改ざんの有無を照合できるようになった。ただし、これは
+signed commit/tagや独立バックアップほど強い保証ではない。あくまで
+「ローカル1箇所だけが証跡の書き換えを行える状態」から一歩進んだだけである。
+
 ## 何が「不可能を可能」にしたのか
 
 8秒障害で永続化なしの回収率は0%だった。公式Defaultは同じ条件で100%を一意に
@@ -633,6 +772,12 @@ E014の最初のapp buildでは、async protocol overloadが自分自身へ解�
 余分な`&&`を混入させたが、run前の`bash -n`で検出した。どちらも「結果に影響しない
 失敗」として消さず、notebookへ原因と修正を残した。
 
+E017・E018のcore実装でも、switch文をprecondition直後に置いたことでSwiftの
+暗黙returnが効かなくなるという同じミスを2回繰り返した。E018ではさらに、
+テスト内のローカル変数`sizes`がヘルパーメソッド名と衝突しており、
+`observedSizes`へ改名して解消した。同じ失敗パターンを繰り返した事実も、
+直して終わりにせず記録した方が次回の再発防止になる。
+
 ## 制約
 
 - iPhone 17 Simulator / iOS 26.4.1。
@@ -650,11 +795,22 @@ E014の最初のapp buildでは、async protocol overloadが自分自身へ解�
   形状へ意図的に結合している。各条件は単一runである。
 - E016はbackground中に予約済みmain-queue closureが実行されるまでを測った。
   visible frame・touch latency・energyの計測ではなく、各条件は単一runである。
+- E017・E018は正しさとコスト形状の証明であり、iOS Simulatorでのruntime実行は
+  まだ行っていない。E019は合成JSONモデルによる境界確認であり、E015の実際の
+  `SpanData`とは256付近の分割結果がわずかに異なった。
+- E020・E021はリポジトリの証跡整合性と主張-証拠対応を検証するものであり、
+  実験結果そのものの科学的妥当性を検証するものではない。
 
 SDK全バージョン、実端末、すべてのネットワーク障害へ一般化はしない。
 
 ## 次に壊すもの
 
+- E017のadditive JSON encoderとE018の並び順依存分割を、実機Simulatorで
+  runtime化する(現状はpre-runtimeのcorrectness/cost-shape証明のみ)。
+- E019で確認したprocessor batch境界の制約を、production向けのbatch設計へ
+  どう反映するか。
+- E019の合成モデルがE015実データと食い違った点を踏まえ、byte境界ぎりぎりの
+  判断は必ず実SDK encodingで最終検証する。
 - stateless exporterに公式実装相当のheader・compression・shutdownを足せるか。
 - byte分割とflushをmain actor外へ移しても、suspension前にdurabilityを確認できるか。
 - 同じ介入のvisible frame・touch latency・energy costは何か。
@@ -665,6 +821,7 @@ SDK全バージョン、実端末、すべてのネットワーク障害へ一�
 - jetsam・クラッシュ・端末再起動・アプリ更新でも回収できるか。
 - 1,000 Span時の書き込み時間、ストレージ、energy影響。
 - downstream dedupに必要な状態量。
+- signed commit/tagや独立バックアップなど、evidence改ざん耐性をさらに強くする方法。
 
 ## 結論
 
@@ -724,3 +881,19 @@ lifecycle callback全体の応答性を判断してはいけない。
 telemetryを各層が何コピー保持するか、そしていつメモリから耐久ストレージへ
 渡るか、1 objectが内部byte上限へ収まるか、境界計算がlifecycle budgetへ収まるか
 に加え、main actorへいつ制御が戻るかまで測る必要がある。
+
+E017〜E019はbyte-aware policyをさらに一般化するモデル・実装レベルの証拠
+である。additive encodingは同じ分割結果を73.5%少ないencode出力で得られ、
+同じpayload multisetでも並び順だけでobject数が10から15へ変わり、processor
+batchの境界はbyte policyが越えられない上限であることを確認した。ただし
+E017とE018はiOS Simulatorでのruntime実行をまだ行っておらず、E019の合成
+JSONモデルはE015の実データと256付近でわずかに食い違った。この区別を曖昧に
+しないよう、E021の監査CLIが「runtime確認済み(E000〜E016、75 run)」「runtime
+未実施(E017・E018)」「モデル/リポジトリ検証(E019・E020)」を機械的に分類し、
+記事の収録範囲と一致することを検証した。
+
+E020は、証跡の孤立した破損や差し替えは検出できるが、証跡ファイルとmanifest
+の期待digestを同時に書き換える攻撃はローカルの検証だけでは見抜けないことを
+示した。この限界に対応するため、301コミットをそのままGitHub上のprivate
+リポジトリへpushし、外部の履歴アンカーを持たせた。それでもsigned commitや
+独立バックアップほどの保証はなく、これも今後壊すべき前提の一つである。
