@@ -194,8 +194,6 @@ timeout、成否を`http-attempts.jsonl`へ記録した。Collector停止時間�
 | 8秒 | 2 | 83,018 | 300 | 3x |
 | 10秒 | 2 | 83,018 | 300 | 3x |
 
-![E003で完了したHTTP失敗回数と配送倍率を比較したグラフ](./assets/e003-retry-amplification.png)
-
 8秒runのHTTP lifecycleは次の通りだった。
 
 1. 27,818 bytes：接続拒否で失敗。
@@ -288,8 +286,6 @@ E005は「完全なファイルを新しいプロセスが読めるか」には�
 | Instant | 0ms | 19ms | 0 | 0/100 |
 | Instant | 300ms | 328ms | 1 | 100/100 |
 
-![E006で生成台帳観測からSIGKILLまでの時間と回収件数を比較した図](./assets/e006-durability-boundary.png)
-
 0件runは、再起動後のHTTP attemptも0だった。存在しないファイルからは何も
 再送できない。300ms runは終了要求前に完全なファイルが見えており、再起動後の
 27,818-byte request 1回で100件を一度ずつ回収した。途中の50件だけ残るような
@@ -376,8 +372,6 @@ JSONL eventで確認する。Collectorはまだ起動しない。
 | Default | provider forceFlush | 45.32ms | 1 | 100/100 |
 | Instant | provider forceFlush | 51.39ms | 1 | 100/100 |
 
-![E008で実background通知からforceFlushし、回収を0件から100件へ変えた比較図](./assets/e008-background-flush.png)
-
 flushなしでは、DefaultもInstantも永続化ファイル0、HTTP attempt 0、回収0だった。
 Instantの同期writerであっても、上流batchから呼ばれなければ何も保存できない。
 
@@ -406,8 +400,6 @@ E008の成功が100 Span専用の偶然でないかを確認するため、実ba
 | Instant | 100 | 208.35ms | 107,785 bytes | 100/100 |
 | Instant | 500 | 196.76ms | 0 | 0/500 |
 | Instant | 1,000 | 220.38ms | 250,307 bytes | 232/1,000 |
-
-![E009でforceFlush完了後も500件が全損し、1000件は末尾232件だけ残った比較図](./assets/e009-silent-size-loss.png)
 
 全条件でprovider forceFlushは1秒以内に完了扱いになった。最初のプロセスのHTTP
 attemptは0で、DefaultとInstantの結果も完全に一致した。非同期writerの速さでは
@@ -443,8 +435,6 @@ stateless exporter、SIGKILL、再起動手順はE009と同じである。
 | Default | 1,000 | 232/1,000 | 1,000/1,000 | 169.19ms |
 | Instant | 500 | 0/500 | 500/500 | 180.00ms |
 | Instant | 1,000 | 232/1,000 | 1,000/1,000 | 80.47ms |
-
-![E010でmaxExportBatchSizeだけを256から100へ下げ、500件と1000件を全件回収した比較図](./assets/e010-safe-chunk-recovery.png)
 
 500件は100件object 5個、1,000件は10個になったが、Persistence Orchestratorは
 それらを1 fileへappendした。再起動後も500件は138,591-byte、1,000件は
@@ -495,8 +485,6 @@ preset、実background callback、15秒schedule、SIGKILL、再起動手順を�
 | Instant | 1,536B | 0/100 | 100/100 | 264,891 bytes |
 | Instant | 2,048B | 0/100 | 100/100 | 316,107 bytes |
 
-![E011で同じ100 Spanがpayload増加により全損し、E012でchunkだけ半分にして全件回収した比較図](./assets/e011-e012-payload-boundary.png)
-
 4条件すべて100/100、重複0だった。1,536Bでは183,618-byte、2,048Bでは
 234,818-byteのrequestを、再起動後に各1回送った。fileが256 KiBより大きいのは
 矛盾ではない。上限未満の50件objectを2個、別の4 MiB上限を持つ1 fileへappend
@@ -542,8 +530,6 @@ SDKの外側に`ByteBudgetingSpanExporter`を置いた。Span配列を公式Pers
 超過量を記録し、0/1を明示的なrejectionへ変えた。「必ず保存する」魔法ではなく、
 回収可能なbatchと不可能な単一objectを区別できるpolicyである。
 
-![E013からE015でbyte-aware policyがsilent lossを全件回収し、単一oversizeを明示rejectionへ変え、binary searchでflushを短縮した図](./assets/e013-e015-byte-policy.png)
-
 ## E015：正しい分割を、backgroundで待てる速さへ近づける
 
 E014のlinear prefix探索は、候補を1件ずつencodeするためO(n²)だった。分割結果を
@@ -576,8 +562,6 @@ closureを1個予約した。同期flushが終わりcallbackがmain queueへ制�
 | Instant | SDK native / 100 | 129.50ms | 374.18ms | 244.68ms | 500/500 |
 | Default | Binary byte / 256 | 476.15ms | 702.84ms | 226.68ms | 500/500 |
 | Instant | Binary byte / 256 | 968.00ms | 1,271.14ms | 303.13ms | 500/500 |
-
-![E016でprovider flushと、その後main queue上の処理が再開するまでの追加遅延を4条件で比較した図](./assets/e016-main-queue-delay.svg)
 
 4条件とも500/500、重複0で、byte policyも243 + 13 + 242 + 2の分割を維持した。
 一方、事前登録した「flush以外の差は100ms未満」は0/4だった。最も分かりやすい
