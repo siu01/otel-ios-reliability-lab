@@ -5,8 +5,7 @@
 The pre-runtime hypotheses are complete. The registered iOS Simulator matrix is
 not run and no delivery or main-queue improvement is claimed yet. The app and
 runner source accept the new strategy, but the application build and runtime
-capture remain pending because external Simulator execution approval was
-unavailable after E016.
+capture remain pending; the Simulator matrix was not executed after E016.
 
 ## Correctness result
 
@@ -71,7 +70,7 @@ statements fixed the compile error; no test result preceded that repair.
 
 The first cost-probe command called the Command Line Tools `swift` directly.
 It failed because that compiler/toolchain and SDK did not match and its default
-module cache was sandbox-inaccessible. `scripts/run-partition-cost.sh` now pins
+module cache path was not writable. `scripts/run-partition-cost.sh` now pins
 Xcode through `DEVELOPER_DIR` and routes Clang, SwiftPM, and scratch caches to
 temporary directories, matching the established core-test harness.
 

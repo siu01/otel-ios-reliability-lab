@@ -32,10 +32,7 @@ termination, and relaunch—and what does persistence change?
 - `evidence/`: screenshots and checksummed raw observations.
 - `docs/lab-notebook/`: chronological decisions, failures, and discoveries.
 - [`docs/reproduction.md`](docs/reproduction.md): pinned environment and replay workflow.
-- [`docs/article-publication-checklist.md`](docs/article-publication-checklist.md):
-  unresolved asset, editorial, and remote-anchor work.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): evidence-first experiment protocol.
-- `article/`: article outline and draft backed by experiment IDs.
 
 ## Status
 
@@ -177,7 +174,6 @@ scripts/verify-evidence-run.sh evidence/raw/<run-id>
 scripts/verify-all-evidence.sh
 scripts/test-evidence-verifier.sh
 scripts/audit-claim-index.sh
-scripts/verify-article-assets.sh
 scripts/verify-publication.sh
 ```
 

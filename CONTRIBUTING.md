@@ -65,7 +65,7 @@ Force-add only the reviewed directory, never the whole ignored root.
 
 Write `results.md` with measurements, hypothesis audit, integrity checks,
 failures, interpretation, and boundaries. Then update the lab notebook, README,
-article if appropriate, and `evidence/claim-index.json`.
+and `evidence/claim-index.json`.
 
 Allowed claim states:
 

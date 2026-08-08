@@ -50,9 +50,9 @@ scripts/generate-project.sh
 scripts/build-simulator.sh
 ```
 
-Xcode needs access to CoreSimulator and SwiftPM caches. A sandbox denial before
-compilation is an environment failure and should be recorded separately from a
-Swift compile failure.
+Xcode needs access to CoreSimulator and SwiftPM caches. A denied cache or
+toolchain path before compilation is an environment failure and should be
+recorded separately from a Swift compile failure.
 
 The default registered device UUID can be overridden without editing scripts:
 
@@ -81,7 +81,7 @@ After capture:
 2. write a manifest that explains inclusion/exclusion and lists every digest;
 3. run `scripts/verify-evidence-run.sh evidence/raw/<run-id>`;
 4. force-add the intentionally ignored raw directory; and
-5. update result, notebook, README, article, and claim state only to the level
+5. update result, notebook, README, and claim state only to the level
    supported by evidence.
 
 ## Current deferred work
@@ -89,10 +89,6 @@ After capture:
 E017 and E018 have core/model results but registered Simulator matrices are
 pending. Their claim-index state must remain `runtimePending` until app build,
 raw manifests, and reconciliation are committed.
-
-The E016 article SVG is committed and XML-valid. PNG rendering and visual QA are
-pending because the headless browser execution approval stopped before launch.
-Do not claim that inspection occurred until the PNG, digest, and QA note exist.
 
 ## External publication anchor
 

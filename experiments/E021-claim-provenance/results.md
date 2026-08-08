@@ -54,5 +54,13 @@ outgrows the experiment that supports it.
 
 E021 validates repository consistency, not scientific validity. It cannot judge
 whether a hypothesis was well chosen, an exclusion was appropriate, one run is
-enough, or the article's prose gives the right emphasis. Those remain human
+enough, or a write-up's prose gives the right emphasis. Those remain human
 review tasks.
+
+## Update
+
+The article draft this section originally cross-checked against has since been
+removed from the repository, and `scripts/audit-claim-index.sh` no longer
+performs the article-inclusion check described above. The remaining checks
+(path existence, state vocabulary, consecutive IDs, raw-evidence requirements,
+and the E020 manifest verifier) are unaffected and still pass.

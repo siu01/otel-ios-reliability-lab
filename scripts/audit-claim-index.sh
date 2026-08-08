@@ -4,7 +4,6 @@ shopt -s nullglob
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 index_path="$repo_dir/evidence/claim-index.json"
-article_path="$repo_dir/article/draft.md"
 verifier="$repo_dir/scripts/verify-evidence-run.sh"
 
 if ! jq -e 'type == "array" and length == 21' "$index_path" >/dev/null; then
@@ -37,8 +36,7 @@ while IFS=$'\t' read -r \
     experiment_directory \
     plan_path \
     results_path \
-    raw_prefix \
-    article_included; do
+    raw_prefix; do
   expected_id="$(printf 'E%03d' "$entry_ordinal")"
   if [[ "$experiment_id" != "$expected_id" ]]; then
     echo "claim index is not consecutive at ordinal $entry_ordinal: $experiment_id" >&2
@@ -52,16 +50,6 @@ while IFS=$'\t' read -r \
       exit 1
     fi
   done
-
-  if [[ "$article_included" == "true" ]]; then
-    if ! rg -q "$experiment_id" "$article_path"; then
-      echo "$experiment_id is marked article-included but is absent" >&2
-      exit 1
-    fi
-  elif rg -q "$experiment_id" "$article_path"; then
-    echo "$experiment_id appears in the article but is marked excluded" >&2
-    exit 1
-  fi
 
   raw_directories=("$repo_dir"/evidence/raw/"$raw_prefix"*)
   case "$state" in
@@ -103,8 +91,7 @@ done < <(jq -r '.[] | [
   .experimentDirectory,
   .planPath,
   .resultsPath,
-  .rawEvidencePrefix,
-  (.articleIncluded | tostring)
+  .rawEvidencePrefix
 ] | @tsv' "$index_path")
 
 printf 'indexed_experiments=%s\n' "$entry_ordinal"

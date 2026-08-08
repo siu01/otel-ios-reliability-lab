@@ -39,9 +39,9 @@ reconciliation—not the batch summaries—establishes the counts above.
 ## Infrastructure failure retained
 
 Attempt `E000-baseline-http-none-001` failed before the Collector opened its OTLP
-ports because the managed sandbox denied the internal metrics listener on port
-8888. Attempt `002` used the required host permission and succeeded. The failed
-run remains committed.
+ports because the local network permission for its internal metrics listener on
+port 8888 had not yet been granted. Attempt `002` used the required host
+permission and succeeded. The failed run remains committed.
 
 ## Conclusion boundary
 

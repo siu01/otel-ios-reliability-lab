@@ -19,7 +19,6 @@ git diff --check
 "$repo_dir/scripts/test-core.sh"
 "$repo_dir/scripts/test-evidence-verifier.sh"
 "$repo_dir/scripts/audit-claim-index.sh"
-"$repo_dir/scripts/verify-article-assets.sh"
 
 commit_count="$(git rev-list --count HEAD)"
 if (( commit_count < minimum_commit_count )); then
